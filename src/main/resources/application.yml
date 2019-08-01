@@ -1,0 +1,21 @@
+database:
+  driver: oracle.jdbc.driver.OracleDriver
+  url: jdbc:oracle:thin:@localhost:1521/eks
+  user: IBS
+  pass: IBS
+
+hibernate:
+  dialect: org.hibernate.dialect.MySQLDialect
+  show_sql: false
+  format_sql: true
+  id.new_generator_mappings: false
+
+logging:
+  level:
+    org.hibernate.type:
+      descriptor:
+        sql.BasicBinder: INFO
+
+server:
+  servlet:
+    context-path: /stockanalizer
