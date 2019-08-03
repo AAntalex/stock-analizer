@@ -1,7 +1,10 @@
 package com.antalex.service.impl;
 
+import com.antalex.holders.DataHolder;
+import com.antalex.model.Candlestick;
 import com.antalex.model.DataChart;
 import com.antalex.model.DataGroup;
+import com.antalex.model.Indicator;
 import com.antalex.service.IndicatorService;
 import com.udojava.evalex.AbstractFunction;
 import com.udojava.evalex.Expression;
@@ -20,6 +23,10 @@ public class IndicatorServiceImpl implements IndicatorService {
 
     @Override
     public BigDecimal calc(DataChart data, String indicator, Integer period) {
+        DataHolder.checkIndicator(period > 0 ? indicator + period : indicator);
+        DataHolder.setData(data);
+        DataHolder.setPeriod(period);
+
         if (!INDICATORS.containsKey(indicator)) {
             String expressionText = "ALLVOL(i-1)+VOL";
 
@@ -33,6 +40,10 @@ public class IndicatorServiceImpl implements IndicatorService {
                 .forEach(it -> expression.and(it, getVariableValue(it, data)));
 
         return expression.eval();
+    }
+
+    private BigDecimal eval() {
+
     }
 
     private Expression getIndicatorExpression(String expressionText) {
@@ -100,7 +111,47 @@ public class IndicatorServiceImpl implements IndicatorService {
                         .map(BigDecimal::new)
                         .orElse(BigDecimal.ZERO);
             }
+            case "HIGH": {
+                return Optional
+                        .ofNullable(data)
+                        .map(DataChart::getData)
+                        .map(DataGroup::getCandle)
+                        .map(Candlestick::getHigh)
+                        .orElse(BigDecimal.ZERO);
+            }
+            case "LOW": {
+                return Optional
+                        .ofNullable(data)
+                        .map(DataChart::getData)
+                        .map(DataGroup::getCandle)
+                        .map(Candlestick::getLow)
+                        .orElse(BigDecimal.ZERO);
+            }
+            case "CLOSE": {
+                return Optional
+                        .ofNullable(data)
+                        .map(DataChart::getData)
+                        .map(DataGroup::getCandle)
+                        .map(Candlestick::getClose)
+                        .orElse(BigDecimal.ZERO);
+            }
+            case "OPEN": {
+                return Optional
+                        .ofNullable(data)
+                        .map(DataChart::getData)
+                        .map(DataGroup::getCandle)
+                        .map(Candlestick::getOpen)
+                        .orElse(BigDecimal.ZERO);
+            }
             default: {
+                if (INDICATORS.containsKey(variable)) {
+                    return Optional
+                            .ofNullable(data)
+                            .map(DataChart::getIndicators)
+                            .map(it -> it.get(variable))
+                            .map(Indicator::getValue)
+                            .orElse(calc(data, variable, 0));
+                }
                 throw new Expression.ExpressionException(String.format("Unknown variable %s", variable));
             }
         }
@@ -115,6 +166,11 @@ public class IndicatorServiceImpl implements IndicatorService {
                 }
                 BigDecimal n = parameters.get(0);
                 BigDecimal i = parameters.get(1);
+
+                if (n.equals(DataHolder.period())) {
+                    DataHolder.setCurData(DataHolder.data());
+                }
+
 
                 return i.add(n);
             }
