@@ -14,5 +14,6 @@ public class DataChart {
     private DataGroup dataOffer;
     private BigDecimal maxPrice;
     private BigDecimal minPrice;
+    private DataChart prev;
     private HashMap<String, Indicator> indicators = new HashMap<>();
 }

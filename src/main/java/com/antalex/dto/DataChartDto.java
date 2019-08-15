@@ -1,5 +1,6 @@
 package com.antalex.dto;
 
+import com.antalex.model.Indicator;
 import lombok.Builder;
 import lombok.Data;
 
@@ -15,5 +16,7 @@ public class DataChartDto {
     private DataGroupDto dataOffer;
     private BigDecimal maxPrice;
     private BigDecimal minPrice;
-    private List<IndicatorDto> indicators;
+    private BigDecimal maxPercent;
+    private BigDecimal minPercent;
+    private List<Indicator> indicators;
 }

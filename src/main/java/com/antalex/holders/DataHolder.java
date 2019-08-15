@@ -3,33 +3,41 @@ package com.antalex.holders;
 import com.antalex.model.DataChart;
 
 import java.math.BigDecimal;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class DataHolder {
     private DataHolder() {
         throw new IllegalStateException("Cache holder class!!!");
     }
 
-    private static final ThreadLocal<DataChart> dataThreadLocal = new ThreadLocal<>();
-    private static final ThreadLocal<DataChart> curDataThreadLocal = new ThreadLocal<>();
+    private static final ThreadLocal<List<DataChart>> dataThreadLocal = ThreadLocal.withInitial(ArrayList::new);
     private static final ThreadLocal<BigDecimal> periodThreadLocal = new ThreadLocal<>();
-    private static final ThreadLocal<Set<String>> processedIndicatorThreadLocal = ThreadLocal.withInitial(HashSet::new);
+    private static final ThreadLocal<Map<String, BigDecimal>> processedIndicatorThreadLocal = ThreadLocal.withInitial(HashMap::new);
+    private static final ThreadLocal<DataChart> firstDataThreadLocal = new ThreadLocal<>();
 
     public static void setData(DataChart data) {
-        dataThreadLocal.set(data);
+        dataThreadLocal.get().clear();
+        processedIndicatorThreadLocal.get().clear();
+        dataThreadLocal.get().add(data);
     }
 
     public static DataChart data() {
-        return dataThreadLocal.get();
+        return data(period().intValue());
     }
 
-    public static void setCurData(DataChart data) {
-        curDataThreadLocal.set(data);
-    }
-
-    public static DataChart curData() {
-        return curDataThreadLocal.get();
+    public static DataChart data(int index) {
+        if (dataThreadLocal.get().isEmpty()) {
+            return null;
+        }
+        index = period().intValue() - index;
+        for (int i = dataThreadLocal.get().size(); i <= index; i++) {
+            DataChart data = dataThreadLocal.get().get(i - 1);
+            if (data.getPrev() == null) {
+                return null;
+            }
+            dataThreadLocal.get().add(data.getPrev());
+        }
+        return dataThreadLocal.get().get(index);
     }
 
     public static void setPeriod(Integer period) {
@@ -40,10 +48,26 @@ public class DataHolder {
         return periodThreadLocal.get();
     }
 
-    public static void checkIndicator(String indicator) {
-        if (processedIndicatorThreadLocal.get().contains(indicator)) {
-            throw new IllegalStateException(String.format("Indicator %s was processed!!!", indicator));
+    public static BigDecimal getIndicator(String indicator) {
+        BigDecimal result = processedIndicatorThreadLocal.get().get(indicator);
+        if (result == null) {
+            if (processedIndicatorThreadLocal.get().containsKey(indicator)) {
+                throw new IllegalStateException(String.format("Indicator %s was processed!!!", indicator));
+            }
+            processedIndicatorThreadLocal.get().put(indicator, null);
         }
-        processedIndicatorThreadLocal.get().add(indicator);
+        return result;
+    }
+
+    public static void setIndicator(String indicator, BigDecimal value) {
+        processedIndicatorThreadLocal.get().put(indicator, value);
+    }
+
+    public static DataChart firstData() {
+        return firstDataThreadLocal.get();
+    }
+
+    public static void setFirstData(DataChart data) {
+        firstDataThreadLocal.set(data);
     }
 }

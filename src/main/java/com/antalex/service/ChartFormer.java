@@ -1,6 +1,7 @@
 package com.antalex.service;
 
 import com.antalex.dto.DataChartDto;
+import com.antalex.holders.DataHolder;
 import com.antalex.mapper.DtoMapper;
 import com.antalex.model.*;
 import com.antalex.persistence.entity.AllTrades;
@@ -8,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.ParseException;
 import java.util.*;
 
@@ -87,9 +89,17 @@ public class ChartFormer{
                 dataChart = new DataChart();
                 dataChart.setDate(date);
                 data.put(date, dataChart);
+                if (this.cacheDadaChart.getLastData() != null) {
+                    dataChart.setPrev(this.cacheDadaChart.getLastData());
+                    indicatorService.calcAll(cacheDadaChart.getLastData());
+                }
+                this.cacheDadaChart.setLastData(dataChart);
+                if (DataHolder.firstData() == null) {
+                    DataHolder.setFirstData(dataChart);
+                }
             }
-            dataChart.setData(addData(dataChart.getData(), trade));
 
+            dataChart.setData(addData(dataChart.getData(), trade));
 
             if (trade.getBidFlag()) {
                 dataChart.setDataBid(addData(dataChart.getDataBid(), trade));
@@ -98,57 +108,7 @@ public class ChartFormer{
             }
             dataChart.setMinPrice(this.cacheDadaChart.getMinPrice());
             dataChart.setMaxPrice(this.cacheDadaChart.getMaxPrice());
-
-            this.cacheDadaChart.setLastData(dataChart);
-
-            calcIndicators(dataChart);
         }
-    }
-
-    private void calcIndicators(DataChart dataChart) {
-        BigDecimal allBidVolume = new BigDecimal(0);
-        BigDecimal allOfferVolume = new BigDecimal(0);
-        BigDecimal allVolume = new BigDecimal(0);
-        DataChart lastData = this.cacheDadaChart.getLastData();
-        if (!lastData.getIndicators().isEmpty()) {
-            allBidVolume = lastData.getIndicators().get("allBidVolume").getValue();
-            allOfferVolume = lastData.getIndicators().get("allOfferVolume").getValue();
-            allVolume = lastData.getIndicators().get("allVolume").getValue();
-        }
-        allVolume = allVolume.add(BigDecimal.valueOf(dataChart.getData().getVolume()));
-        if (dataChart.getDataBid() != null) {
-            allBidVolume = allBidVolume.add(BigDecimal.valueOf(dataChart.getDataBid().getVolume()));
-        }
-        if (dataChart.getDataOffer() != null) {
-            allOfferVolume = allOfferVolume.add(BigDecimal.valueOf(dataChart.getDataOffer().getVolume()));
-        }
-
-
-        dataChart.getIndicators().put("allVolume", Indicator.builder()
-                .value(allVolume)
-                .isPublic(false)
-                .name("Объем сделок")
-                .build());
-        dataChart.getIndicators().put("allBidVolume", Indicator.builder()
-                .value(allBidVolume)
-                .isPublic(false)
-                .name("Объем спроса")
-                .build());
-        dataChart.getIndicators().put("allOfferVolume", Indicator.builder()
-                .value(allOfferVolume)
-                .isPublic(false)
-                .name("Объем предложения")
-                .build());
-        dataChart.getIndicators().put("OVB", Indicator.builder()
-                .value(allBidVolume.divide(allVolume, 5, BigDecimal.ROUND_HALF_UP).multiply(new BigDecimal(100)))
-                .isPublic(true)
-                .name("Индекс перекупленности")
-                .build());
-
-
-
-        BigDecimal ind = indicatorService.calc(cacheDadaChart.getLastData(), "ALLVOL", 100);
-        System.out.println("AAA " + ind);
     }
 
     private DataGroup addData(DataGroup data, AllTrades trade) {

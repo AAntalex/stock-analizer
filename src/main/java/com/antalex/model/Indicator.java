@@ -9,6 +9,9 @@ import java.math.BigDecimal;
 @Builder
 public class Indicator {
     private BigDecimal value;
-    private Boolean isPublic;
+    private IndicatorType type;
+    private String description;
     private String name;
+    private String code;
+    private Integer period;
 }
