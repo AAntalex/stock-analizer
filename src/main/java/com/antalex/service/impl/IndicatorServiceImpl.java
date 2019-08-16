@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Component
 @AllArgsConstructor
@@ -69,13 +68,29 @@ public class IndicatorServiceImpl implements IndicatorService {
         return evaluate(indicator, period);
     }
 
+    @Override
+    public void init() {
+        INDICATORS.clear();
+    }
 
     private BigDecimal evaluate(String indicator, Integer index) {
         DataChart data = DataHolder.data(index);
-        if (data == null || INDICATORS.containsKey(indicator) && DataHolder.period().compareTo(BigDecimal.ZERO) > 0 && index <= 0 ) {
+        if (data == null || INDICATORS.containsKey(indicator)
+                && DataHolder.period().compareTo(BigDecimal.ZERO) > 0
+                && index <= 0 )
+        {
             return BigDecimal.ZERO;
         }
-        String indicatorCode = index == 0 ? indicator : indicator + index;
+
+        String indicatorCode = Optional
+                .ofNullable(INDICATORS.get(indicator))
+                .map(
+                        indicatorExpression ->
+                                Optional.ofNullable(indicatorExpression.getTempVariable())
+                                        .map(var -> indicator + '_' + var)
+                                        .orElse(indicator)
+                ).orElse(indicator);
+        indicatorCode = index == 0 ? indicatorCode : indicatorCode + index;
 
         BigDecimal result = Optional.ofNullable(DataHolder.getIndicator(indicatorCode))
                 .orElse(
@@ -125,23 +140,22 @@ public class IndicatorServiceImpl implements IndicatorService {
 
     private Expression createExpression (String indicator, Integer index) {
         IndicatorExpression indicatorExpression = INDICATORS.get(indicator);
-        Expression expression = new Expression(indicatorExpression.getIndicatorEntity().getExpression())
-                .with(INDEX, BigDecimal.valueOf(index));
+        Expression expression = new Expression(indicatorExpression.getIndicatorEntity().getExpression());
+
         expression.setPrecision(PRECISION).setRoundingMode(RoundingMode.HALF_UP);
         indicatorExpression.getFunctions()
                 .forEach(expression::addFunction);
         indicatorExpression.getLazyFunctions()
                 .forEach(expression::addLazyFunction);
         indicatorExpression.getVariables()
-                .forEach(it -> expression.and(it, getVariableValue(it, index)));
+                .forEach(it -> expression.and(it, getVariableValue(indicatorExpression.getVariableName(it), index)));
         return expression;
     }
 
     private IndicatorExpression getIndicatorExpression(IndicatorEntity indicatorEntity) {
         String expressionText = indicatorEntity.getExpression()
                 .replace(' ', Character.MIN_VALUE)
-                .replace('.', '_')
-                .toUpperCase();
+                .replace('.', '_');
 
         List<String> functions = new ArrayList<>();
         int pos = 0;
@@ -151,7 +165,9 @@ public class IndicatorServiceImpl implements IndicatorService {
             if (pos < len) {
                 int curPos = expressionText.indexOf(var, pos) + var.length();
                 pos = curPos;
-                if (curPos + startLen < len && START_INDEX.equals(expressionText.substring(curPos, curPos + startLen))) {
+                if (curPos + startLen < len &&
+                        START_INDEX.equals(expressionText.substring(curPos, curPos + startLen).toUpperCase()))
+                {
                     pos = pos + startLen;
                     functions.add(var);
                 }
@@ -165,7 +181,7 @@ public class IndicatorServiceImpl implements IndicatorService {
                 .map(this::createFunctionForIndicator)
                 .forEach(expression::addFunction);
 
-        getVariables(new Expression(expressionText))
+        new Expression(expressionText).getUsedVariables()
                 .stream()
                 .distinct()
                 .forEach(expression::addVariables);
@@ -179,20 +195,12 @@ public class IndicatorServiceImpl implements IndicatorService {
                         .replace('(', '[')
                         .replace(')', ']')
         );
-        return getVariables(expression);
-    }
-
-    private List<String> getVariables(Expression expression) {
-        return expression
-                .getUsedVariables()
-                .stream()
-                .filter(it -> !INDEX.equals(it))
-                .collect(Collectors.toList());
+        return expression.getUsedVariables();
     }
 
     private BigDecimal getVariableValue(String variable, Integer index) {
         DataChart data = DataHolder.data(index);
-        switch (variable) {
+        switch (variable.toUpperCase()) {
             case VOL: {
                 return Optional
                         .ofNullable(data)
@@ -316,14 +324,23 @@ public class IndicatorServiceImpl implements IndicatorService {
             case PERIOD: {
                 return DataHolder.period();
             }
+            case INDEX: {
+                return new BigDecimal(index);
+            }
             default: {
-                if (INDICATORS.get(variable) != null) {
+                if (INDICATORS.containsKey(variable)) {
                     return Optional
                             .ofNullable(data)
                             .map(DataChart::getIndicators)
                             .map(it -> it.get(getIndicatorCode(variable)))
                             .map(Indicator::getValue)
                             .orElse(evaluate(variable, index));
+                }
+                int pos = variable.indexOf('_');
+                if (pos > 0 && INDICATORS.containsKey(variable.substring(0, pos))) {
+                    String indicator = variable.substring(0, pos);
+                    INDICATORS.get(indicator).setTempVariable(variable.substring(pos + 1));
+                    return evaluate(indicator, index);
                 }
                 throw new Expression.ExpressionException(String.format("Unknown variable %s", variable));
             }

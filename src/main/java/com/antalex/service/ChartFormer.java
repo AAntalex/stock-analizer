@@ -2,15 +2,13 @@ package com.antalex.service;
 
 import com.antalex.dto.DataChartDto;
 import com.antalex.holders.DataHolder;
+import com.antalex.holders.DateFormatHolder;
 import com.antalex.mapper.DtoMapper;
 import com.antalex.model.*;
 import com.antalex.persistence.entity.AllTrades;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.text.ParseException;
 import java.util.*;
 
 @Component
@@ -32,23 +30,7 @@ public class ChartFormer{
         this.indicatorService = indicatorService;
     }
     public void setApproximation(int approximation) {
-        this.cacheDadaChart.setApproximation(approximation);
-    }
-
-    private Date getDateFromString(String sDate) {
-        if (sDate == null || sDate.isEmpty()) {
-            return null;
-        }
-        try {
-            return this.cacheDadaChart.getDateFormat().parse(sDate.substring(0, 14 - this.cacheDadaChart.getApproximation()));
-        } catch (ParseException e) {
-            System.out.println("Не верный формат даты " + sDate);
-            e.printStackTrace();
-        } catch (Exception e) {
-            System.out.println("Не предвиденная ошибка " + sDate);
-            e.printStackTrace();
-        }
-        return null;
+        DateFormatHolder.setApproximation(approximation);
     }
 
     private Boolean checkTime(String uno) {
@@ -83,7 +65,7 @@ public class ChartFormer{
 
         if (checkTime(uno) && !allTrades.containsKey(uno)) {
             allTrades.put(trade.getUno(), trade);
-            Date date = getDateFromString(uno);
+            Date date = DateFormatHolder.getDateFromString(uno);
             DataChart dataChart = data.get(date);
             if (dataChart == null) {
                 dataChart = new DataChart();
@@ -94,11 +76,7 @@ public class ChartFormer{
                     indicatorService.calcAll(cacheDadaChart.getLastData());
                 }
                 this.cacheDadaChart.setLastData(dataChart);
-                if (DataHolder.firstData() == null) {
-                    DataHolder.setFirstData(dataChart);
-                }
             }
-
             dataChart.setData(addData(dataChart.getData(), trade));
 
             if (trade.getBidFlag()) {
@@ -151,6 +129,7 @@ public class ChartFormer{
     }
 
     public List<DataChartDto> getDataList(String sDateBegin, String sDateEnd) {
-        return getDataList(getDateFromString(sDateBegin), getDateFromString(sDateEnd));
+        DataHolder.setFirstData(this.cacheDadaChart.getFirstData());
+        return getDataList(DateFormatHolder.getDateFromString(sDateBegin), DateFormatHolder.getDateFromString(sDateEnd));
     }
 }

@@ -11,21 +11,17 @@ import java.util.Map;
 
 @Data
 public class CacheDadaChart {
-    private static final String DATE_FORMAT = "yyyyMMddHHmmss";
-
     private final Map<Date, DataChart> data = new HashMap<>();
     private final Map<String, AllTrades> allTrades = new HashMap<>();
-    private SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_FORMAT);
-    private int approximation = 0;
+    private DataChart firstData;
     private DataChart lastData;
     private BigDecimal maxPrice;
     private BigDecimal minPrice;
 
-    public void setApproximation(int approximation) {
-        if (this.approximation == approximation || approximation < 0 || approximation > 10) {
-            return;
+    public void setLastData(DataChart data) {
+        this.lastData = data;
+        if (this.firstData == null) {
+            this.firstData = data;
         }
-        this.approximation = approximation;
-        dateFormat = new SimpleDateFormat(DATE_FORMAT.substring(0, 14 - approximation));
     }
 }
