@@ -9,6 +9,8 @@ public class DataHolder {
     private DataHolder() {
         throw new IllegalStateException("Cache holder class!!!");
     }
+    private static final String NOT_ENOUGH_PERIODS = "Not enough periods for calc %d. Need %d periods.";
+    private static final String EMPTY_DATA = "Data for calc is not set.";
 
     private static final ThreadLocal<List<DataChart>> dataThreadLocal = ThreadLocal.withInitial(ArrayList::new);
     private static final ThreadLocal<BigDecimal> periodThreadLocal = new ThreadLocal<>();
@@ -27,21 +29,38 @@ public class DataHolder {
 
     public static DataChart data(int index) {
         if (dataThreadLocal.get().isEmpty()) {
+            throw new IllegalStateException(EMPTY_DATA);
+        }
+        if (index <= 0 && !addData(index)) {
             return null;
         }
-        index = period().intValue() - index;
-        for (int i = dataThreadLocal.get().size(); i <= index; i++) {
-            DataChart data = dataThreadLocal.get().get(i - 1);
-            if (data.getPrev() == null) {
-                return null;
-            }
-            dataThreadLocal.get().add(data.getPrev());
+        return dataThreadLocal.get().get(period().intValue() - index);
+    }
+
+
+    private static Boolean addData(Integer period) {
+        if (dataThreadLocal.get().isEmpty()) {
+            throw new IllegalStateException(EMPTY_DATA);
         }
-        return dataThreadLocal.get().get(index);
+        int maxIndex = period().intValue() - period;
+        if (maxIndex > 0) {
+            for (int i = dataThreadLocal.get().size() - 1; i < maxIndex; i++) {
+                DataChart data = dataThreadLocal.get().get(i);
+                data = data.getPrev();
+                if (data == null) {
+                    return false;
+                }
+                dataThreadLocal.get().add(data);
+            }
+        }
+        return true;
     }
 
     public static void setPeriod(Integer period) {
         periodThreadLocal.set(BigDecimal.valueOf(period));
+        if (!addData(1)) {
+            throw new IllegalStateException(String.format(NOT_ENOUGH_PERIODS, dataThreadLocal.get().size(), period));
+        }
     }
 
     public static BigDecimal period() {
@@ -52,7 +71,7 @@ public class DataHolder {
         BigDecimal result = processedIndicatorThreadLocal.get().get(indicator);
         if (result == null) {
             if (processedIndicatorThreadLocal.get().containsKey(indicator)) {
-                throw new IllegalStateException(String.format("Indicator %s was processed!!!", indicator));
+                return BigDecimal.ZERO;
             }
             processedIndicatorThreadLocal.get().put(indicator, null);
         }

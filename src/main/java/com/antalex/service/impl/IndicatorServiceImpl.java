@@ -36,7 +36,8 @@ public class IndicatorServiceImpl implements IndicatorService {
     private static final String OFFER_HIGH = "OFFER_HIGH";
     private static final String OFFER_LOW = "OFFER_LOW";
 
-    private static final String START_INDEX = "(I";
+    private static final String SUFFIX_ITERABLE = "_I";
+    private static final String SUM_INDICATOR = "SUM$%s_";
     private static final Map<String, IndicatorExpression> INDICATORS = new HashMap<>();
 
     private static final int PRECISION = 16;
@@ -64,8 +65,12 @@ public class IndicatorServiceImpl implements IndicatorService {
 
     @Override
     public BigDecimal calc(String indicator, Integer period) {
-        DataHolder.setPeriod(period);
-        return evaluate(indicator, period);
+        try {
+            DataHolder.setPeriod(period);
+            return evaluate(indicator, period);
+        } catch (IllegalStateException e) {
+            return null;
+        }
     }
 
     @Override
@@ -74,15 +79,26 @@ public class IndicatorServiceImpl implements IndicatorService {
     }
 
     private BigDecimal evaluate(String indicator, Integer index) {
+        return evaluate(indicator, index, false);
+    }
+
+    private BigDecimal evaluate(String indicator, Integer index, Boolean iterable) {
         DataChart data = DataHolder.data(index);
-        if (data == null || INDICATORS.containsKey(indicator)
-                && DataHolder.period().compareTo(BigDecimal.ZERO) > 0
-                && index <= 0 )
+        if (
+                iterable && (
+                        data == null || INDICATORS.containsKey(indicator)
+                                && DataHolder.period().compareTo(BigDecimal.ZERO) > 0
+                                && index <= 0
+                ))
         {
             return BigDecimal.ZERO;
         }
 
-        String indicatorCode = Optional
+        if (data == null) {
+            return null;
+        }
+
+        String indicatorName = Optional
                 .ofNullable(INDICATORS.get(indicator))
                 .map(
                         indicatorExpression ->
@@ -90,28 +106,35 @@ public class IndicatorServiceImpl implements IndicatorService {
                                         .map(var -> indicator + '_' + var)
                                         .orElse(indicator)
                 ).orElse(indicator);
-        indicatorCode = index == 0 ? indicatorCode : indicatorCode + index;
+        String indicatorCode = getIndicatorCode(indicatorName, index);
+        BigDecimal result = DataHolder.getIndicator(indicatorCode);
+        if (result == null) {
+            result = Optional.ofNullable(data.getIndicators().get(iterable ? getIndicatorCode(indicatorName, index) : getIndicatorCode(indicatorName)))
+                    .map(Indicator::getValue)
+                    .orElseGet(() -> {
+                        if (INDICATORS.containsKey(indicator)) {
+                            if (index >= 0) {
+                                try {
+                                    return createExpression(indicator, index).eval();
+                                } catch (ArithmeticException e) {
+                                    return null;
+                                }
+                            } else {
+                                return BigDecimal.ZERO;
+                            }
+                        } else {
+                            return getVariableValue(indicator, index);
+                        }
+                    });
+            addIndicator(indicator, result, indicatorCode, index);
+        }
+        return result;
+    }
 
-        BigDecimal result = Optional.ofNullable(DataHolder.getIndicator(indicatorCode))
-                .orElse(
-                        Optional.ofNullable(data.getIndicators().get(index <= 0 ? indicator : indicator + index))
-                                .map(Indicator::getValue)
-                                .orElseGet(() -> {
-                                    if (INDICATORS.containsKey(indicator)) {
-                                        if (index >= 0) {
-                                            return createExpression(indicator, index).eval();
-                                        } else {
-                                            return BigDecimal.ZERO;
-                                        }
-                                    } else {
-                                        return getVariableValue(indicator, index);
-                                    }
-                                })
-                );
-
-        DataHolder.setIndicator(indicatorCode, result);
-
+    private void addIndicator(String indicator, BigDecimal value, String indicatorCode, int index) {
+        DataHolder.setIndicator(indicatorCode, value);
         if (index == DataHolder.period().intValue()) {
+            DataChart data = DataHolder.data(index);
             IndicatorEntity indicatorEntity = Optional
                     .ofNullable(INDICATORS.get(indicator))
                     .map(IndicatorExpression::getIndicatorEntity)
@@ -125,17 +148,15 @@ public class IndicatorServiceImpl implements IndicatorService {
                     );
             data.getIndicators().put(indicatorCode,
                     Indicator.builder()
-                            .value(result)
+                            .value(value)
                             .code(indicatorCode)
                             .description(indicatorEntity.getDescription())
                             .type(indicatorEntity.getType())
                             .period(DataHolder.period().intValue())
                             .name(indicatorEntity.getCode())
                             .build()
-                    );
+            );
         }
-
-        return result;
     }
 
     private Expression createExpression (String indicator, Integer index) {
@@ -148,37 +169,56 @@ public class IndicatorServiceImpl implements IndicatorService {
         indicatorExpression.getLazyFunctions()
                 .forEach(expression::addLazyFunction);
         indicatorExpression.getVariables()
-                .forEach(it -> expression.and(it, getVariableValue(indicatorExpression.getVariableName(it), index)));
+                .forEach(it ->
+                        expression.and(it, getVariableValue(indicatorExpression.getVariableName(it), index))
+                );
         return expression;
     }
 
     private IndicatorExpression getIndicatorExpression(IndicatorEntity indicatorEntity) {
         String expressionText = indicatorEntity.getExpression()
-                .replace(' ', Character.MIN_VALUE)
+                .replace(String.valueOf(" "), "")
                 .replace('.', '_');
 
         List<String> functions = new ArrayList<>();
+        List<String> iterableFunctions = new ArrayList<>();
         int pos = 0;
         int len = expressionText.length();
-        int startLen = START_INDEX.length();
-        for (String var: getAllVariables(expressionText)) {
+        List<String> variableList = getAllVariables(expressionText);
+        StringBuilder expressionBuilder = new StringBuilder();
+
+        for (int i = 0; i < variableList.size(); i++) {
             if (pos < len) {
-                int curPos = expressionText.indexOf(var, pos) + var.length();
+                String variable = variableList.get(i);
+                int curPos = expressionText.indexOf(variable, pos) + variable.length();
+                expressionBuilder.append(expressionText.substring(pos, curPos));
                 pos = curPos;
-                if (curPos + startLen < len &&
-                        START_INDEX.equals(expressionText.substring(curPos, curPos + startLen).toUpperCase()))
-                {
-                    pos = pos + startLen;
-                    functions.add(var);
+                if (i+1 < variableList.size() && expressionText.charAt(curPos) == '(') {
+                    if (INDEX.equals(variableList.get(i+1).toUpperCase())) {
+                        expressionBuilder.append(SUFFIX_ITERABLE);
+                        iterableFunctions.add(variable + SUFFIX_ITERABLE);
+                    }
+                    if (PERIOD.equals(variableList.get(i+1).toUpperCase())) {
+                        functions.add(variable);
+                    }
                 }
             }
         }
+        if (pos < expressionText.length()) {
+            expressionBuilder.append(expressionText.substring(pos));
+        }
+        indicatorEntity.setExpression(expressionBuilder.toString());
         IndicatorExpression expression = new IndicatorExpression(indicatorEntity);
         expression.addLazyFunctions(sumFunction());
         functions
                 .stream()
                 .distinct()
                 .map(this::createFunctionForIndicator)
+                .forEach(expression::addFunction);
+        iterableFunctions
+                .stream()
+                .distinct()
+                .map(it -> createFunctionForIndicator(it, true))
                 .forEach(expression::addFunction);
 
         new Expression(expressionText).getUsedVariables()
@@ -332,7 +372,7 @@ public class IndicatorServiceImpl implements IndicatorService {
                     return Optional
                             .ofNullable(data)
                             .map(DataChart::getIndicators)
-                            .map(it -> it.get(getIndicatorCode(variable)))
+                            .map(it -> it.get(getIndicatorCode(variable, index)))
                             .map(Indicator::getValue)
                             .orElse(evaluate(variable, index));
                 }
@@ -348,18 +388,24 @@ public class IndicatorServiceImpl implements IndicatorService {
     }
 
     private Function createFunctionForIndicator(String function) {
+        return createFunctionForIndicator(function, false);
+    }
+
+    private Function createFunctionForIndicator(String function, Boolean iterable) {
         return new AbstractFunction(function, 1) {
             @Override
             public BigDecimal eval(List<BigDecimal> parameters) {
-                return evaluate(function, parameters.get(0).intValue());
+                return evaluate(iterable ? function.substring(0, function.length() - 2) : function, parameters.get(0).intValue(), iterable);
             }
         };
     }
 
+    private String getIndicatorCode(String indicatorName, int index) {
+        return index == 0 ? indicatorName : indicatorName + index;
+    }
+
     private String getIndicatorCode(String indicatorName) {
-        return DataHolder.period().compareTo(BigDecimal.ZERO) > 0
-                ? indicatorName + DataHolder.period()
-                : indicatorName;
+        return getIndicatorCode(indicatorName, DataHolder.period().intValue());
     }
 
     private LazyFunction sumFunction() {
@@ -368,10 +414,10 @@ public class IndicatorServiceImpl implements IndicatorService {
 
             private LazyNumber RESULT = new LazyNumber() {
                 public BigDecimal eval() {
-                    return result.setScale(PRECISION, RoundingMode.HALF_UP);
+                    return result;
                 }
                 public String getString() {
-                    return result.toString();
+                    return null;
                 }
             };
 
@@ -379,18 +425,33 @@ public class IndicatorServiceImpl implements IndicatorService {
             public LazyNumber lazyEval(List<LazyNumber> list) {
                 String variable = list.get(0).getString();
                 int n = DataHolder.period().intValue();
-                String indicator = getIndicatorCode(variable);
+                String indicator = getIndicatorCode(String.format(SUM_INDICATOR, variable));
                 result = getVariableValue(variable, n)
                         .add(
                                 Optional
                                         .ofNullable(DataHolder.data(n - 1))
                                         .map(DataChart::getIndicators)
-                                        .map(it -> it.get(indicator))
-                                        .map(Indicator::getValue).orElse(BigDecimal.ZERO)
+                                        .map(it ->
+                                                Optional.ofNullable(it.get(indicator))
+                                                        .map(Indicator::getValue)
+                                                        .orElseGet(() -> {
+                                                                BigDecimal sum = BigDecimal.ZERO;
+                                                                for (int i = n-1; i > 0; i--) {
+                                                                    sum = sum.add(getVariableValue(variable, i));
+                                                                }
+                                                                return sum;
+                                                        })
+
+                                        )
+                                        .orElse(BigDecimal.ZERO)
                         );
 
                 if (n > 0) {
-                    result = result.subtract(getVariableValue(variable, 0));
+                    result = result.subtract(
+                            Optional
+                                    .ofNullable(getVariableValue(variable, 0))
+                                    .orElse(BigDecimal.ZERO)
+                    );
                 }
 
                 if (!DataHolder.data().getIndicators().containsKey(indicator)) {
