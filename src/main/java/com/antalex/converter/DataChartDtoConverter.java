@@ -38,7 +38,7 @@ public class DataChartDtoConverter implements DtoConverter<DataChart, DataChartD
                 .maxPercent(getPercentDelta(entity.getMaxPrice(), open))
                 .indicators(entity.getIndicators().values()
                         .stream()
-                        .filter(it -> it.getType() == IndicatorType.OSCILLATOR || it.getType() == IndicatorType.TREND)
+                        .filter(it -> it.getType() != IndicatorType.TECHNICAL)
                         .collect(Collectors.toList())
                 )
                 .build();

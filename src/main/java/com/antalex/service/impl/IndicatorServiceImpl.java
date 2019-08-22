@@ -56,6 +56,7 @@ public class IndicatorServiceImpl implements IndicatorService {
         INDICATORS.values()
                 .stream()
                 .map(IndicatorExpression::getIndicatorEntity)
+                .sorted(Comparator.comparing(IndicatorEntity::getId))
                 .forEach(indicator -> indicator.getPeriods()
                         .stream()
                         .map(IndicatorPeriodEntity::getPeriod)
@@ -240,126 +241,84 @@ public class IndicatorServiceImpl implements IndicatorService {
 
     private BigDecimal getVariableValue(String variable, Integer index) {
         DataChart data = DataHolder.data(index);
+        if (data == null) {
+            return BigDecimal.ZERO;
+        }
         switch (variable.toUpperCase()) {
             case VOL: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getData)
-                        .map(DataGroup::getVolume)
-                        .map(BigDecimal::new)
-                        .orElse(BigDecimal.ZERO);
+                return new BigDecimal(data.getData().getVolume());
             }
             case HIGH: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getData)
-                        .map(DataGroup::getCandle)
-                        .map(Candlestick::getHigh)
-                        .orElse(BigDecimal.ZERO);
+                return data.getData().getCandle().getHigh();
             }
             case LOW: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getData)
-                        .map(DataGroup::getCandle)
-                        .map(Candlestick::getLow)
-                        .orElse(BigDecimal.ZERO);
+                return data.getData().getCandle().getLow();
             }
             case CLOSE: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getData)
-                        .map(DataGroup::getCandle)
-                        .map(Candlestick::getClose)
-                        .orElse(BigDecimal.ZERO);
+                return data.getData().getCandle().getClose();
             }
             case OPEN: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getData)
-                        .map(DataGroup::getCandle)
-                        .map(Candlestick::getOpen)
-                        .orElse(BigDecimal.ZERO);
+                return data.getData().getCandle().getOpen();
             }
             case BID_VOL: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getDataBid)
+                return Optional.ofNullable(data.getDataBid())
                         .map(DataGroup::getVolume)
                         .map(BigDecimal::new)
                         .orElse(BigDecimal.ZERO);
             }
             case BID_HIGH: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getDataBid)
+                return Optional.ofNullable(data.getDataBid())
                         .map(DataGroup::getCandle)
                         .map(Candlestick::getHigh)
-                        .orElse(BigDecimal.ZERO);
+                        .orElse(null);
             }
             case BID_LOW: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getDataBid)
+                return Optional.ofNullable(data.getDataBid())
                         .map(DataGroup::getCandle)
                         .map(Candlestick::getLow)
-                        .orElse(BigDecimal.ZERO);
+                        .orElse(null);
             }
             case BID_CLOSE: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getDataBid)
+                return Optional.ofNullable(data.getDataBid())
                         .map(DataGroup::getCandle)
                         .map(Candlestick::getClose)
-                        .orElse(BigDecimal.ZERO);
+                        .orElse(null);
             }
             case BID_OPEN: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getDataBid)
+                return Optional.ofNullable(data.getDataBid())
                         .map(DataGroup::getCandle)
                         .map(Candlestick::getOpen)
-                        .orElse(BigDecimal.ZERO);
+                        .orElse(null);
             }
             case OFFER_VOL: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getDataOffer)
+                return Optional.ofNullable(data.getDataOffer())
                         .map(DataGroup::getVolume)
                         .map(BigDecimal::new)
                         .orElse(BigDecimal.ZERO);
             }
             case OFFER_HIGH: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getDataOffer)
+                return Optional.ofNullable(data.getDataOffer())
                         .map(DataGroup::getCandle)
                         .map(Candlestick::getHigh)
-                        .orElse(BigDecimal.ZERO);
+                        .orElse(null);
             }
             case OFFER_LOW: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getDataOffer)
+                return Optional.ofNullable(data.getDataOffer())
                         .map(DataGroup::getCandle)
                         .map(Candlestick::getLow)
-                        .orElse(BigDecimal.ZERO);
+                        .orElse(null);
             }
             case OFFER_CLOSE: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getDataOffer)
+                return Optional.ofNullable(data.getDataOffer())
                         .map(DataGroup::getCandle)
                         .map(Candlestick::getClose)
-                        .orElse(BigDecimal.ZERO);
+                        .orElse(null);
             }
             case OFFER_OPEN: {
-                return Optional
-                        .ofNullable(data)
-                        .map(DataChart::getDataOffer)
+                return Optional.ofNullable(data.getDataOffer())
                         .map(DataGroup::getCandle)
                         .map(Candlestick::getOpen)
-                        .orElse(BigDecimal.ZERO);
+                        .orElse(null);
             }
             case PERIOD: {
                 return DataHolder.period();
@@ -368,11 +327,12 @@ public class IndicatorServiceImpl implements IndicatorService {
                 return new BigDecimal(index);
             }
             default: {
+                if (data.getIndicators().containsKey(variable)) {
+                    return data.getIndicators().get(variable).getValue();
+                }
                 if (INDICATORS.containsKey(variable)) {
                     return Optional
-                            .ofNullable(data)
-                            .map(DataChart::getIndicators)
-                            .map(it -> it.get(getIndicatorCode(variable, index)))
+                            .ofNullable(data.getIndicators().get(getIndicatorCode(variable, index)))
                             .map(Indicator::getValue)
                             .orElse(evaluate(variable, index));
                 }
@@ -382,7 +342,7 @@ public class IndicatorServiceImpl implements IndicatorService {
                     INDICATORS.get(indicator).setTempVariable(variable.substring(pos + 1));
                     return evaluate(indicator, index);
                 }
-                throw new Expression.ExpressionException(String.format("Unknown variable %s", variable));
+                throw new IllegalStateException(String.format("Unknown variable %s", variable));
             }
         }
     }

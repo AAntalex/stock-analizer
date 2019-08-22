@@ -16,4 +16,8 @@ public enum IndicatorType {
      * Трендовый
      */
     TREND,
+    /**
+     * Гистограммный
+     */
+    BAR,
 }
