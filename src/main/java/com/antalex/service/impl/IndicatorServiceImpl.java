@@ -38,6 +38,7 @@ public class IndicatorServiceImpl implements IndicatorService {
 
     private static final String SUFFIX_ITERABLE = "_I";
     private static final String SUM_INDICATOR = "SUM$%s_";
+    private static final String SUM_FUNCTION = "SUM";
     private static final Map<String, IndicatorExpression> INDICATORS = new HashMap<>();
 
     private static final int PRECISION = 16;
@@ -183,10 +184,12 @@ public class IndicatorServiceImpl implements IndicatorService {
 
         List<String> functions = new ArrayList<>();
         List<String> iterableFunctions = new ArrayList<>();
+        List<String> expressionFunctions = new ArrayList<>();
         int pos = 0;
         int len = expressionText.length();
         List<String> variableList = getAllVariables(expressionText);
         StringBuilder expressionBuilder = new StringBuilder();
+        Set<String> declaredFunctions = new Expression("").getDeclaredFunctions();
 
         for (int i = 0; i < variableList.size(); i++) {
             if (pos < len) {
@@ -195,12 +198,21 @@ public class IndicatorServiceImpl implements IndicatorService {
                 expressionBuilder.append(expressionText.substring(pos, curPos));
                 pos = curPos;
                 if (i+1 < variableList.size() && expressionText.charAt(curPos) == '(') {
+                    Boolean funcExpression = true;
                     if (INDEX.equals(variableList.get(i+1).toUpperCase())) {
                         expressionBuilder.append(SUFFIX_ITERABLE);
                         iterableFunctions.add(variable + SUFFIX_ITERABLE);
+                        funcExpression = false;
                     }
                     if (PERIOD.equals(variableList.get(i+1).toUpperCase())) {
                         functions.add(variable);
+                        funcExpression = false;
+                    }
+                    if (funcExpression &&
+                            !SUM_FUNCTION.equals(variable) &&
+                            !declaredFunctions.contains(variable))
+                    {
+                        expressionFunctions.add(variable);
                     }
                 }
             }
@@ -221,6 +233,11 @@ public class IndicatorServiceImpl implements IndicatorService {
                 .distinct()
                 .map(it -> createFunctionForIndicator(it, true))
                 .forEach(expression::addFunction);
+        expressionFunctions
+                .stream()
+                .distinct()
+                .map(this::createExpressionFunction)
+                .forEach(expression::addLazyFunctions);
 
         new Expression(expressionText).getUsedVariables()
                 .stream()
@@ -351,6 +368,14 @@ public class IndicatorServiceImpl implements IndicatorService {
         return createFunctionForIndicator(function, false);
     }
 
+    private String getIndicatorCode(String indicatorName, int index) {
+        return index == 0 ? indicatorName : indicatorName + index;
+    }
+
+    private String getIndicatorCode(String indicatorName) {
+        return getIndicatorCode(indicatorName, DataHolder.period().intValue());
+    }
+
     private Function createFunctionForIndicator(String function, Boolean iterable) {
         return new AbstractFunction(function, 1) {
             @Override
@@ -360,16 +385,33 @@ public class IndicatorServiceImpl implements IndicatorService {
         };
     }
 
-    private String getIndicatorCode(String indicatorName, int index) {
-        return index == 0 ? indicatorName : indicatorName + index;
-    }
+    private AbstractLazyFunction createExpressionFunction(String function) {
+        return new AbstractLazyFunction(function, 1) {
+            private BigDecimal result;
 
-    private String getIndicatorCode(String indicatorName) {
-        return getIndicatorCode(indicatorName, DataHolder.period().intValue());
+            private LazyNumber RESULT = new LazyNumber() {
+                public BigDecimal eval() {
+                    return result;
+                }
+                public String getString() {
+                    return null;
+                }
+            };
+
+            @Override
+            public LazyNumber lazyEval(List<LazyNumber> list) {
+                String variable = list.get(0).getString();
+                if (INDICATORS.containsKey(function)) {
+                    INDICATORS.get(function).setTempVariable(variable);
+                    result = evaluate(function, DataHolder.period().intValue());
+                }
+                return RESULT;
+            }
+        };
     }
 
     private LazyFunction sumFunction() {
-        return new AbstractLazyFunction("SUM", 1) {
+        return new AbstractLazyFunction(SUM_FUNCTION, 1) {
             private BigDecimal result;
 
             private LazyNumber RESULT = new LazyNumber() {
