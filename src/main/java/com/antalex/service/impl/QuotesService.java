@@ -17,10 +17,10 @@ public class QuotesService implements DataStockService<Quotes> {
 
     public List<Quotes> query(String secClass, String sDateBegin, String sDateEnd, String stockClass) {
         if (sDateEnd == null || sDateEnd.isEmpty()) {
-            return quotesRepository.findByCodeAndUnoGreaterThanEqualAndClassCode(secClass, sDateBegin, stockClass);
+            return quotesRepository.findByCodeAndUnoGreaterThanEqualAndClassCodeAndQuotesIsNotNull(secClass, sDateBegin, stockClass);
         }
         try {
-            return quotesRepository.findByCodeAndUnoGreaterThanEqualAndUnoLessThanEqualAndClassCode(secClass, sDateBegin, sDateEnd, stockClass);
+            return quotesRepository.findByCodeAndUnoGreaterThanEqualAndUnoLessThanEqualAndClassCodeAndQuotesIsNotNull(secClass, sDateBegin, sDateEnd, stockClass);
         } catch (Exception e) {
             return Collections.emptyList();
         }

@@ -1,10 +1,10 @@
 package com.antalex.model;
 
 import com.antalex.persistence.entity.AllTrades;
+import com.antalex.persistence.entity.Quotes;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -13,6 +13,7 @@ import java.util.Map;
 public class CacheDadaChart {
     private final Map<Date, DataChart> data = new HashMap<>();
     private final Map<String, AllTrades> allTrades = new HashMap<>();
+    private final Map<String, Quotes> quotes = new HashMap<>();
     private DataChart firstData;
     private DataChart lastData;
     private BigDecimal maxPrice;

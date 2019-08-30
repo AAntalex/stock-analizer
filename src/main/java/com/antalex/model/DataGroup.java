@@ -1,6 +1,7 @@
 package com.antalex.model;
 
 import com.antalex.persistence.entity.AllTrades;
+import com.antalex.persistence.entity.Quotes;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -11,5 +12,4 @@ import java.util.List;
 public class DataGroup {
     private Candlestick candle;
     private Double volume;
-    private List<AllTrades> deals = new ArrayList<>();
 }
