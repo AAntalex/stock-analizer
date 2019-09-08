@@ -1,5 +1,6 @@
 package com.antalex.config;
 
+import com.antalex.web.config.SwaggerConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,7 +19,9 @@ import java.util.Properties;
 
 @Configuration
 @EnableJpaRepositories("com.antalex.persistence.repository")
-@Import(SwaggerConfig.class)
+@Import({
+        SwaggerConfig.class
+})
 public class SpringJdbcConfig {
     @Autowired
     private Environment env;

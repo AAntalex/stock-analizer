@@ -17,6 +17,7 @@ import java.util.List;
 
 @RestController
 @AllArgsConstructor(onConstructor = @__(@Autowired))
+@RequestMapping(path = "api/v1/stock")
 public class StockController {
     private AllTradesService allTradesService;
     private QuotesService quotesService;

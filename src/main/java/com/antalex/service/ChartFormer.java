@@ -67,23 +67,35 @@ public class ChartFormer {
             DataChart dataChart = getDataChart(uno);
 
             List<String> quotesList = Arrays.asList(quote.getQuotes().split(";"));
+            HashMap<BigDecimal, BigDecimal> currentQuotesBid = new HashMap<>();
+            HashMap<BigDecimal, BigDecimal> currentQuotesOffer = new HashMap<>();
             for (int i = 0; i < quotesList.size(); i+=2) {
                 BigDecimal price = new BigDecimal(quotesList.get(i));
-                Double volume = new Double(quotesList.get(i + 1));
-                HashMap<BigDecimal, DataGroup> quotes;
-                if (price.compareTo(BigDecimal.ZERO) < 0) {
-                    quotes = dataChart.getQuotesOffer();
-                    price = price.negate();
+                BigDecimal volume = new BigDecimal(quotesList.get(i + 1));
+                if (price.compareTo(BigDecimal.ZERO) > 0) {
+                    currentQuotesOffer.put(price, volume);
                 } else {
-                    quotes = dataChart.getQuotesBid();
-                }
-                DataGroup dataGroup = quotes.get(price);
-                dataGroup = addData(dataGroup, new BigDecimal(volume), volume);
-                if (!quotes.containsKey(price)) {
-                    quotes.put(price, dataGroup);
+                    currentQuotesBid.put(price, volume);
                 }
             }
+            addDataQuotes(currentQuotesBid, dataChart.getQuotesBid());
+            addDataQuotes(currentQuotesOffer, dataChart.getQuotesOffer());
         }
+    }
+
+    private void addDataQuotes(HashMap<BigDecimal, BigDecimal> quotesSource, HashMap<BigDecimal, DataGroup> quotesDst) {
+        quotesDst
+                .entrySet()
+                .stream()
+                .filter(it -> !quotesSource.containsKey(it.getKey()))
+                .forEach(it -> addData(it.getValue(), BigDecimal.ZERO, 0d));
+        quotesSource
+                .forEach((price, value) -> {
+                    DataGroup dataGroup = addData(quotesDst.get(price), value, 0d);
+                    if (!quotesDst.containsKey(price)) {
+                        quotesDst.put(price, dataGroup);
+                    }
+                });
     }
 
     public void addDeal(AllTrades trade) {

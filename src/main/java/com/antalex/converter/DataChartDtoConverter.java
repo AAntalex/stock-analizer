@@ -2,6 +2,7 @@ package com.antalex.converter;
 
 import com.antalex.dto.DataChartDto;
 import com.antalex.dto.DataGroupDto;
+import com.antalex.dto.QuoteDto;
 import com.antalex.holders.DataHolder;
 import com.antalex.mapper.DtoConverter;
 import com.antalex.mapper.DtoMapper;
@@ -36,6 +37,8 @@ public class DataChartDtoConverter implements DtoConverter<DataChart, DataChartD
                 .maxPrice(entity.getMaxPrice())
                 .minPercent(getPercentDelta(entity.getMinPrice(), open))
                 .maxPercent(getPercentDelta(entity.getMaxPrice(), open))
+                .quotesBid(dtoMapper.mapToList(entity.getQuotesBid(), QuoteDto.class))
+                .quotesOffer(dtoMapper.mapToList(entity.getQuotesBid(), QuoteDto.class))
                 .indicators(entity.getIndicators().values()
                         .stream()
                         .filter(it -> it.getType() != IndicatorType.TECHNICAL)

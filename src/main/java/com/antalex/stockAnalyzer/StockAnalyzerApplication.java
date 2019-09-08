@@ -5,14 +5,16 @@ import org.jsoup.nodes.Element;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.ComponentScan;;
 
 import org.jsoup.nodes.Document;
+import org.springframework.security.oauth2.config.annotation.web.configuration.EnableAuthorizationServer;
+import org.springframework.security.oauth2.config.annotation.web.configuration.EnableResourceServer;
+
 import java.io.IOException;
 
 @SpringBootApplication
 @ComponentScan("com.antalex")
-@EnableAutoConfiguration
 public class StockAnalyzerApplication {
 
     public static void main(String[] args) {
