@@ -21,6 +21,7 @@
         <hibernate-version>5.2.11.Final</hibernate-version>
         <spring-security-oauth2.version>2.3.5.RELEASE</spring-security-oauth2.version>
         <spring-security-jwt.version>1.0.9.RELEASE</spring-security-jwt.version>
+        <liquibase.version>3.6.2</liquibase.version>
     </properties>
 
     <dependencies>
@@ -52,6 +53,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-core</artifactId>
+            <version>${liquibase.version}</version>
         </dependency>
         <dependency>
             <groupId>com.oracle</groupId>

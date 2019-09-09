@@ -1,6 +1,6 @@
 package com.antalex.config;
 
-import com.antalex.web.config.SwaggerConfig;
+import com.antalex.config.web.SwaggerConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

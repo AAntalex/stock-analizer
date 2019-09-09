@@ -16,6 +16,10 @@ logging:
       descriptor:
         sql.BasicBinder: INFO
 
+security:
+  auth:
+    privateKey: Njb3BlIjpbInJlYWQiLCJ3cml0ZSJdLCJhdGkiOiI0ZW
+
 server:
   servlet:
     context-path: /stockanalizer

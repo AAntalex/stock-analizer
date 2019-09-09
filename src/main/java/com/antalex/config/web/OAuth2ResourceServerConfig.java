@@ -1,5 +1,7 @@
-package com.antalex.web.config;
+package com.antalex.config.web;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -14,8 +16,10 @@ import org.springframework.security.oauth2.provider.token.store.JwtTokenStore;
 
 @Configuration
 @EnableResourceServer
+@EnableConfigurationProperties
 public class OAuth2ResourceServerConfig extends ResourceServerConfigurerAdapter {
-    private String privateKey = "private key";
+    @Value("${security.auth.privateKey}")
+    private String privateKey;
 
     @Override
     public void configure(HttpSecurity http) throws Exception {
