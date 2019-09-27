@@ -1,8 +1,6 @@
 package com.antalex.converter;
 
-import com.antalex.dto.DataChartDto;
-import com.antalex.dto.DataGroupDto;
-import com.antalex.dto.QuoteDto;
+import com.antalex.dto.*;
 import com.antalex.holders.DataHolder;
 import com.antalex.mapper.DtoConverter;
 import com.antalex.mapper.DtoMapper;
@@ -13,6 +11,8 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Comparator;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component
@@ -28,6 +28,20 @@ public class DataChartDtoConverter implements DtoConverter<DataChart, DataChartD
     public DataChartDto convert(DataChart entity) {
         if (entity == null) return null;
         BigDecimal open = DataHolder.firstData().getData().getCandle().getOpen();
+
+        QuoteGroupDto quoteGroupDto = QuoteGroupDto.builder()
+                .bid(QuoteDto.builder()
+                        .closeVolume(BigDecimal.ZERO)
+                        .openVolume(BigDecimal.ZERO)
+                        .build()
+                )
+                .offer(QuoteDto.builder()
+                        .closeVolume(BigDecimal.ZERO)
+                        .openVolume(BigDecimal.ZERO)
+                        .build()
+                )
+                .build();
+
         return DataChartDto.builder()
                 .date(entity.getDate().getTime())
                 .data(dtoMapper.map(entity.getData(), DataGroupDto.class))
@@ -37,14 +51,45 @@ public class DataChartDtoConverter implements DtoConverter<DataChart, DataChartD
                 .maxPrice(entity.getMaxPrice())
                 .minPercent(getPercentDelta(entity.getMinPrice(), open))
                 .maxPercent(getPercentDelta(entity.getMaxPrice(), open))
-                .quotesBid(dtoMapper.mapToList(entity.getQuotesBid(), QuoteDto.class))
-                .quotesOffer(dtoMapper.mapToList(entity.getQuotesBid(), QuoteDto.class))
+                .quotes(
+                        dtoMapper.mapToList(entity.getQuotes(), QuoteGroupDto.class).stream()
+                                .sorted(Comparator.comparing(QuoteGroupDto::getPrice))
+                                .map(it -> this.calcVolume(it, quoteGroupDto, false))
+                                .sorted(Comparator.comparing(QuoteGroupDto::getPrice).reversed())
+                                .map(it -> this.calcVolume(it, quoteGroupDto, true))
+                                .collect(Collectors.toList())
+                )
                 .indicators(entity.getIndicators().values()
                         .stream()
                         .filter(it -> it.getType() != IndicatorType.TECHNICAL)
                         .collect(Collectors.toList())
                 )
                 .build();
+    }
+
+    private QuoteGroupDto calcVolume(QuoteGroupDto quoteGroup, QuoteGroupDto prevQuoteGroup, boolean bidFlag) {
+        QuoteDto quote = bidFlag ? quoteGroup.getBid() : quoteGroup.getOffer();
+        QuoteDto prevQuote = bidFlag ? prevQuoteGroup.getBid() : prevQuoteGroup.getOffer();
+
+        quote.setCloseVolume(
+                prevQuote.getCloseVolume().add(
+                        Optional.ofNullable(quote.getCandle())
+                                .map(CandlestickDto::getClose)
+                                .orElse(BigDecimal.ZERO)
+                )
+        );
+        prevQuote.setCloseVolume(quote.getCloseVolume());
+
+        quote.setOpenVolume(
+                prevQuote.getOpenVolume().add(
+                        Optional.ofNullable(quote.getCandle())
+                                .map(CandlestickDto::getOpen)
+                                .orElse(BigDecimal.ZERO)
+                )
+        );
+        prevQuote.setOpenVolume(quote.getOpenVolume());
+
+        return quoteGroup;
     }
 
     private BigDecimal getPercentDelta(BigDecimal value, BigDecimal valueFrom) {

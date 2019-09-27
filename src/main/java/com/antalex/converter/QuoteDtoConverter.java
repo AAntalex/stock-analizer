@@ -1,6 +1,6 @@
 package com.antalex.converter;
 
-import com.antalex.dto.QuoteCandleDto;
+import com.antalex.dto.CandlestickDto;
 import com.antalex.dto.QuoteDto;
 import com.antalex.mapper.DtoConverter;
 import com.antalex.mapper.DtoMapper;
@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+
 
 @Component
 public class QuoteDtoConverter implements DtoConverter<DataGroup, QuoteDto> {
@@ -23,15 +24,9 @@ public class QuoteDtoConverter implements DtoConverter<DataGroup, QuoteDto> {
     public QuoteDto convert(DataGroup entity) {
         if (entity == null) return null;
         return QuoteDto.builder()
-                .candle(dtoMapper.map(entity.getCandle(), QuoteCandleDto.class))
-                .build();
-    }
-
-    public QuoteDto convert(DataGroup entity, BigDecimal price) {
-        if (entity == null) return null;
-        return QuoteDto.builder()
-                .candle(dtoMapper.map(entity.getCandle(), QuoteCandleDto.class))
-                .price(price)
+                .candle(dtoMapper.map(entity.getCandle(), CandlestickDto.class))
+                .closeVolume(BigDecimal.ZERO)
+                .openVolume(BigDecimal.ZERO)
                 .build();
     }
 }

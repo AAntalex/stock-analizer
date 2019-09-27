@@ -16,7 +16,6 @@ public class DataChart {
     private BigDecimal maxPrice;
     private BigDecimal minPrice;
     private DataChart prev;
-    private HashMap<BigDecimal, DataGroup> quotesBid = new HashMap<>();
-    private HashMap<BigDecimal, DataGroup> quotesOffer = new HashMap<>();
+    private HashMap<BigDecimal, QuoteGroup> quotes = new HashMap<>();
     private HashMap<String, Indicator> indicators = new HashMap<>();
 }

@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 @Data
 @Builder
 public class QuoteDto {
-    private QuoteCandleDto candle;
-    private BigDecimal price;
+    private CandlestickDto candle;
+    private BigDecimal openVolume;
+    private BigDecimal closeVolume;
 }

@@ -4,10 +4,7 @@ import com.antalex.dto.DataChartDto;
 import com.antalex.holders.DataHolder;
 import com.antalex.holders.DateFormatHolder;
 import com.antalex.mapper.DtoMapper;
-import com.antalex.model.CacheDadaChart;
-import com.antalex.model.Candlestick;
-import com.antalex.model.DataChart;
-import com.antalex.model.DataGroup;
+import com.antalex.model.*;
 import com.antalex.persistence.entity.AllTrades;
 import com.antalex.persistence.entity.Quotes;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,27 +70,34 @@ public class ChartFormer {
                 BigDecimal price = new BigDecimal(quotesList.get(i));
                 BigDecimal volume = new BigDecimal(quotesList.get(i + 1));
                 if (price.compareTo(BigDecimal.ZERO) > 0) {
-                    currentQuotesOffer.put(price, volume);
-                } else {
                     currentQuotesBid.put(price, volume);
+                } else {
+                    currentQuotesOffer.put(price.negate(), volume);
                 }
             }
-            addDataQuotes(currentQuotesBid, dataChart.getQuotesBid());
-            addDataQuotes(currentQuotesOffer, dataChart.getQuotesOffer());
+            addDataQuotes(dataChart, currentQuotesBid, true);
+            addDataQuotes(dataChart, currentQuotesOffer, false);
         }
     }
 
-    private void addDataQuotes(HashMap<BigDecimal, BigDecimal> quotesSource, HashMap<BigDecimal, DataGroup> quotesDst) {
-        quotesDst
+    private void addDataQuotes(DataChart dataChart, HashMap<BigDecimal, BigDecimal> quotesSource, boolean bidFlag) {
+        dataChart.getQuotes()
                 .entrySet()
                 .stream()
                 .filter(it -> !quotesSource.containsKey(it.getKey()))
-                .forEach(it -> addData(it.getValue(), BigDecimal.ZERO, 0d));
+                .forEach(it -> addData(bidFlag ? it.getValue().getBid() : it.getValue().getOffer(), BigDecimal.ZERO, 0d));
+
         quotesSource
                 .forEach((price, value) -> {
-                    DataGroup dataGroup = addData(quotesDst.get(price), value, 0d);
-                    if (!quotesDst.containsKey(price)) {
-                        quotesDst.put(price, dataGroup);
+                    QuoteGroup quoteGroup = dataChart.getQuotes().get(price);
+                    if (!dataChart.getQuotes().containsKey(price)) {
+                        quoteGroup = new QuoteGroup();
+                        dataChart.getQuotes().put(price, quoteGroup);
+                    }
+                    if (bidFlag) {
+                        quoteGroup.setBid(addData(quoteGroup.getBid(), value, 0d));
+                    } else {
+                        quoteGroup.setOffer(addData(quoteGroup.getOffer(), value, 0d));
                     }
                 });
     }
