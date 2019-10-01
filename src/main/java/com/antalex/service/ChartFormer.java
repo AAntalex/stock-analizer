@@ -96,8 +96,14 @@ public class ChartFormer {
                     }
                     if (bidFlag) {
                         quoteGroup.setBid(addData(quoteGroup.getBid(), value, 0d));
+                        if (quoteGroup.getOffer() == null) {
+                            quoteGroup.setOffer(addData(null, BigDecimal.ZERO, 0d));
+                        }
                     } else {
                         quoteGroup.setOffer(addData(quoteGroup.getOffer(), value, 0d));
+                        if (quoteGroup.getBid() == null) {
+                            quoteGroup.setBid(addData(null, BigDecimal.ZERO, 0d));
+                        }
                     }
                 });
     }
