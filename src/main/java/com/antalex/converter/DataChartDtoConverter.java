@@ -64,6 +64,10 @@ public class DataChartDtoConverter implements DtoConverter<DataChart, DataChartD
                         .filter(it -> it.getType() != IndicatorType.TECHNICAL)
                         .collect(Collectors.toList())
                 )
+                .bidUp(entity.getBidUp())
+                .bidDown(entity.getBidDown())
+                .offerUp(entity.getOfferUp())
+                .offerDown(entity.getOfferDown())
                 .build();
     }
 

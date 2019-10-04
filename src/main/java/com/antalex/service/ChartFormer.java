@@ -1,6 +1,7 @@
 package com.antalex.service;
 
 import com.antalex.dto.DataChartDto;
+import com.antalex.dto.VolumeDto;
 import com.antalex.holders.DataHolder;
 import com.antalex.holders.DateFormatHolder;
 import com.antalex.mapper.DtoMapper;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class ChartFormer {
@@ -85,7 +87,109 @@ public class ChartFormer {
                 .entrySet()
                 .stream()
                 .filter(it -> !quotesSource.containsKey(it.getKey()))
-                .forEach(it -> addData(bidFlag ? it.getValue().getBid() : it.getValue().getOffer(), BigDecimal.ZERO, 0d));
+                .forEach(it ->
+                        addData(
+                                bidFlag ? it.getValue().getBid() : it.getValue().getOffer(),
+                                BigDecimal.ZERO, 0d
+                        )
+                );
+
+        List<VolumeDto> quotesList;
+        if (bidFlag) {
+            quotesList = quotesSource.entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey(Comparator.reverseOrder()))
+                    .map(it -> new VolumeDto(it.getKey(), it.getValue()))
+                    .collect(Collectors.toList());
+
+            Optional.ofNullable(this.cacheDadaChart.getLastBidQuotes())
+                    .filter(it -> !it.isEmpty())
+                    .ifPresent(lastQuotes -> {
+                        quotesList.stream()
+                                .filter(it ->
+                                        it.getPrice().compareTo(lastQuotes.get(0).getPrice()) > 0 ||
+                                                it.getPrice().compareTo(lastQuotes.get(0).getPrice()) == 0 &&
+                                                        it.getVolume().compareTo(lastQuotes.get(0).getVolume()) > 0
+                                )
+                                .forEach(it -> {
+                                    BigDecimal result = Optional
+                                            .ofNullable(dataChart.getBidUp())
+                                            .orElse(BigDecimal.ZERO)
+                                            .add(it.getVolume());
+                                    if (it.getPrice().compareTo(lastQuotes.get(0).getPrice()) == 0) {
+                                        result = result.subtract(lastQuotes.get(0).getVolume());
+                                    }
+                                    dataChart.setBidUp(result);
+                                });
+                        lastQuotes.stream()
+                                .filter(it ->
+                                        quotesList.isEmpty() ||
+                                                it.getPrice().compareTo(quotesList.get(0).getPrice()) > 0 ||
+                                                it.getPrice().compareTo(quotesList.get(0).getPrice()) == 0 &&
+                                                        it.getVolume().compareTo(quotesList.get(0).getVolume()) > 0
+                                )
+                                .forEach(it -> {
+                                    BigDecimal result = Optional
+                                            .ofNullable(dataChart.getBidDown())
+                                            .orElse(BigDecimal.ZERO)
+                                            .add(it.getVolume());
+                                    if (!quotesList.isEmpty() &&
+                                            it.getPrice().compareTo(quotesList.get(0).getPrice()) == 0)
+                                    {
+                                        result = result.subtract(quotesList.get(0).getVolume());
+                                    }
+                                    dataChart.setBidDown(result);
+                                });
+                    });
+
+             this.cacheDadaChart.setLastBidQuotes(quotesList);
+        } else {
+            quotesList = quotesSource.entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .map(it -> new VolumeDto(it.getKey(), it.getValue()))
+                    .collect(Collectors.toList());
+
+
+            Optional.ofNullable(this.cacheDadaChart.getLastOfferQuotes())
+                    .filter(it -> !it.isEmpty())
+                    .ifPresent(lastQuotes -> {
+                        quotesList.stream()
+                                .filter(it ->
+                                        it.getPrice().compareTo(lastQuotes.get(0).getPrice()) < 0 ||
+                                                it.getPrice().compareTo(lastQuotes.get(0).getPrice()) == 0 &&
+                                                        it.getVolume().compareTo(lastQuotes.get(0).getVolume()) > 0
+                                )
+                                .forEach(it -> {
+                                    BigDecimal result = Optional
+                                            .ofNullable(dataChart.getOfferUp())
+                                            .orElse(BigDecimal.ZERO)
+                                            .add(it.getVolume());
+                                    if (it.getPrice().compareTo(lastQuotes.get(0).getPrice()) == 0) {
+                                        result = result.subtract(lastQuotes.get(0).getVolume());
+                                    }
+                                    dataChart.setOfferUp(result);
+                                });
+                        lastQuotes.stream()
+                                .filter(it ->
+                                        quotesList.isEmpty() ||
+                                                it.getPrice().compareTo(quotesList.get(0).getPrice()) < 0 ||
+                                                it.getPrice().compareTo(quotesList.get(0).getPrice()) == 0 &&
+                                                        it.getVolume().compareTo(quotesList.get(0).getVolume()) > 0
+                                )
+                                .forEach(it -> {
+                                    BigDecimal result = Optional
+                                            .ofNullable(dataChart.getOfferDown())
+                                            .orElse(BigDecimal.ZERO)
+                                            .add(it.getVolume());
+                                    if (!quotesList.isEmpty() &&
+                                            it.getPrice().compareTo(quotesList.get(0).getPrice()) == 0)
+                                    {
+                                        result = result.subtract(quotesList.get(0).getVolume());
+                                    }
+                                    dataChart.setOfferDown(result);
+                                });
+                    });
+            this.cacheDadaChart.setLastOfferQuotes(quotesList);
+        }
 
         quotesSource
                 .forEach((price, value) -> {

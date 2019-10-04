@@ -30,6 +30,10 @@ public class IndicatorServiceImpl implements IndicatorService {
     private static final String BID_CLOSE = "BID_CLOSE";
     private static final String BID_HIGH = "BID_HIGH";
     private static final String BID_LOW = "BID_LOW";
+    private static final String BID_UP = "BID_UP";
+    private static final String BID_DOWN = "BID_DOWN";
+    private static final String OFFER_UP = "OFFER_UP";
+    private static final String OFFER_DOWN = "OFFER_DOWN";
     private static final String OFFER_VOL = "OFFER_VOL";
     private static final String OFFER_OPEN = "OFFER_OPEN";
     private static final String OFFER_CLOSE = "OFFER_CLOSE";
@@ -336,6 +340,18 @@ public class IndicatorServiceImpl implements IndicatorService {
                         .map(DataGroup::getCandle)
                         .map(Candlestick::getOpen)
                         .orElse(null);
+            }
+            case BID_UP: {
+                return Optional.ofNullable(data.getBidUp()).orElse(BigDecimal.ZERO);
+            }
+            case BID_DOWN: {
+                return Optional.ofNullable(data.getBidDown()).orElse(BigDecimal.ZERO);
+            }
+            case OFFER_UP: {
+                return Optional.ofNullable(data.getOfferUp()).orElse(BigDecimal.ZERO);
+            }
+            case OFFER_DOWN: {
+                return Optional.ofNullable(data.getOfferDown()).orElse(BigDecimal.ZERO);
             }
             case PERIOD: {
                 return DataHolder.period();

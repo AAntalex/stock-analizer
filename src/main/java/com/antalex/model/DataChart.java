@@ -18,4 +18,8 @@ public class DataChart {
     private DataChart prev;
     private HashMap<BigDecimal, QuoteGroup> quotes = new HashMap<>();
     private HashMap<String, Indicator> indicators = new HashMap<>();
+    private BigDecimal bidUp;
+    private BigDecimal bidDown;
+    private BigDecimal offerUp;
+    private BigDecimal offerDown;
 }
