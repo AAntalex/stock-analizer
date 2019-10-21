@@ -13,8 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 public class ChartServiceImpl implements ChartService {
     private ChartFormer chartFormer;
-    private AllTradesService allTradesService;
-    private QuotesService quotesService;
+    private AllHistoryService allHistoryService;
     private IndicatorService indicatorService;
 
     @Override
@@ -26,8 +25,7 @@ public class ChartServiceImpl implements ChartService {
     @Override
     public List<DataChartDto> query(String secClass, String sDateBegin, String sDateEnd, String stockClass, int approximation) {
         chartFormer.setApproximation(approximation);
-        quotesService.query(secClass, sDateBegin, sDateEnd, stockClass).forEach(chartFormer::addQuotes);
-        allTradesService.query(secClass, sDateBegin, sDateEnd, stockClass).forEach(chartFormer::addDeal);
+        allHistoryService.query(secClass, sDateBegin, sDateEnd, stockClass).forEach(chartFormer::add);
         return chartFormer.getDataList(sDateBegin, sDateEnd);
     }
 }

@@ -4,14 +4,13 @@ import com.antalex.persistence.entity.AllTrades;
 import com.antalex.persistence.repository.*;
 import com.antalex.service.DataStockService;
 import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
 
 @Service
-@AllArgsConstructor(onConstructor = @__(@Autowired))
+@AllArgsConstructor
 public class AllTradesService implements DataStockService<AllTrades> {
     private AllTradesRepository allTradesRepository;
 

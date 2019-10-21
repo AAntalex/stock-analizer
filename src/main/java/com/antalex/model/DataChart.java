@@ -5,7 +5,6 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 
 @Data
 public class DataChart {
@@ -18,8 +17,8 @@ public class DataChart {
     private DataChart prev;
     private HashMap<BigDecimal, QuoteGroup> quotes = new HashMap<>();
     private HashMap<String, Indicator> indicators = new HashMap<>();
-    private BigDecimal bidUp;
-    private BigDecimal bidDown;
-    private BigDecimal offerUp;
-    private BigDecimal offerDown;
+    private BigDecimal bidUp = BigDecimal.ZERO;
+    private BigDecimal bidDown = BigDecimal.ZERO;
+    private BigDecimal offerUp = BigDecimal.ZERO;
+    private BigDecimal offerDown = BigDecimal.ZERO;
 }
