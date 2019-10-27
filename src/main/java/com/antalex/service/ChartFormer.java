@@ -7,6 +7,7 @@ import com.antalex.holders.DateFormatHolder;
 import com.antalex.mapper.DtoMapper;
 import com.antalex.model.*;
 import com.antalex.persistence.entity.AllHistory;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +15,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 @Component
 public class ChartFormer {
@@ -76,41 +76,42 @@ public class ChartFormer {
     }
 
     private Trend getTrend() {
-        return getTrend(0);
+        return getTrend(0, 0);
     }
 
     private Trend getTrend(int period) {
-        List<DataChart> dataList = this.getDataList();
-        Trend trend = trendService.getTrend(dataList, period);
-        IntStream.range(period > 0 ? dataList.size() - period : 0, dataList.size())
-                .forEach(
-                        idx -> {
-                            HashMap<String, Indicator> indicators = dataList.get(idx).getIndicators();
+        return getTrend(period, 0);
+    }
 
-                            String code = period > 0 ? "TREND" + period + "_HIGH" : "TREND_HIGH";
-                            indicators.put(
-                                    code,
-                                    Indicator.builder()
-                                            .period(period)
-                                            .value(trend.getHigh().f(idx))
-                                            .code(code)
-                                            .name("TREND")
-                                            .type(IndicatorType.TREND)
-                                            .build()
-                            );
-                            code = period > 0 ? "TREND" + period + "_low" : "TREND_low";
-                            indicators.put(
-                                    code,
-                                    Indicator.builder()
-                                            .period(period)
-                                            .value(trend.getLow().f(idx))
-                                            .code(code)
-                                            .name("TREND")
-                                            .type(IndicatorType.TREND)
-                                            .build()
-                            );
-                        });
+    private Trend getTrend(int period, int offset) {
+        List<DataChart> dataList = this.cacheDadaChart.getDataList();
+        Trend trend = trendService.getTrend(dataList, period, offset);
+        trendService.setTrendToIndicator(trend, dataList);
         return trend;
+    }
+
+    private void addPointToTrend(Integer period) {
+        if (!this.cacheDadaChart.getTrends().containsKey(period)) {
+            this.cacheDadaChart.getTrends().put(period, new TrendSnapShot());
+        }
+        TrendSnapShot snapShot = this.cacheDadaChart.getTrends().get(period);
+        List<DataChart> dataList = this.cacheDadaChart.getDataList();
+        Trend trend = snapShot.getTrend();
+        if (trend == null) {
+            if (dataList.size() - period >= snapShot.getStart()) {
+                snapShot.setTrend(trendService.getTrend(dataList, period, 0));
+            }
+        } else {
+            int x = dataList.size() - 1;
+            Candlestick y = dataList.get(dataList.size() - 1).getData().getCandle();
+            if (trend.checkPoint(x, y)) {
+                snapShot.getTrend().setPoint(x, y);
+            } else {
+                trendService.setTrendToIndicator(trend, dataList);
+                snapShot.setStart(x);
+                snapShot.setTrend(null);
+            }
+        }
     }
 
     private void addPoint(DataChart dataChart){
@@ -121,6 +122,13 @@ public class ChartFormer {
         {
             if (this.cacheDadaChart.getLastData() != null) {
                 dataChart.setPrev(this.cacheDadaChart.getLastData());
+/*
+
+                addPointToTrend(30);
+                addPointToTrend(60);
+                addPointToTrend(120);
+
+*/
                 indicatorService.calcAll(cacheDadaChart.getLastData());
             }
             this.cacheDadaChart.setLastData(dataChart);
@@ -387,6 +395,9 @@ public class ChartFormer {
     private DataChart addQuotes(AllHistory history) {
         DataChart dataChart = getDataChart(history.getUno());
 
+
+        dataChart.getAllHistory().add(history);
+
         List<String> quotesList = Arrays.asList(history.getQuotes().split(";"));
         HashMap<BigDecimal, BigDecimal> currentQuotesBid = new HashMap<>();
         HashMap<BigDecimal, BigDecimal> currentQuotesOffer = new HashMap<>();
@@ -399,13 +410,14 @@ public class ChartFormer {
                 currentQuotesOffer.put(price.negate(), volume);
             }
         }
-        addDataQuotes(dataChart, currentQuotesBid, true);
-        addDataQuotes(dataChart, currentQuotesOffer, false);
+        Boolean isNew = dataChart.getQuotes().size() == 0;
+        addDataQuotes(dataChart, currentQuotesBid, true, isNew);
+        addDataQuotes(dataChart, currentQuotesOffer, false, isNew);
 
         return dataChart;
     }
 
-    private void addDataQuotes(DataChart dataChart, HashMap<BigDecimal, BigDecimal> quotesSource, boolean bidFlag) {
+    private void addDataQuotes(DataChart dataChart, HashMap<BigDecimal, BigDecimal> quotesSource, boolean bidFlag, Boolean isNew) {
         dataChart.getQuotes()
                 .entrySet()
                 .stream()
@@ -522,11 +534,17 @@ public class ChartFormer {
                         dataChart.getQuotes().put(price, quoteGroup);
                     }
                     if (bidFlag) {
+                        if (!isNew && quoteGroup.getBid() == null) {
+                            quoteGroup.setBid(addData(null, BigDecimal.ZERO, 0d));
+                        }
                         quoteGroup.setBid(addData(quoteGroup.getBid(), value, 0d));
                         if (quoteGroup.getOffer() == null) {
                             quoteGroup.setOffer(addData(null, BigDecimal.ZERO, 0d));
                         }
                     } else {
+                        if (!isNew && quoteGroup.getOffer() == null) {
+                            quoteGroup.setOffer(addData(null, BigDecimal.ZERO, 0d));
+                        }
                         quoteGroup.setOffer(addData(quoteGroup.getOffer(), value, 0d));
                         if (quoteGroup.getBid() == null) {
                             quoteGroup.setBid(addData(null, BigDecimal.ZERO, 0d));
@@ -602,22 +620,15 @@ public class ChartFormer {
                         .sorted(Comparator.comparing(DataChart::getDate)), DataChartDto.class);
     }
 
-    private List<DataChart> getDataList() {
-        return this.cacheDadaChart.getData().values()
-                .stream()
-                .filter(it -> it.getData() != null)
-                .sorted(Comparator.comparing(DataChart::getDate))
-                .collect(Collectors.toList());
-    }
-
     public List<DataChartDto> getDataList(String sDateBegin, String sDateEnd) {
         DataHolder.setFirstData(this.cacheDadaChart.getFirstData());
 
 
 
-        getTrend();
-        getTrend(60);
-        getTrend(100);
+        getTrend(0, 5);
+        getTrend(30, 5);
+        getTrend(60, 5);
+        getTrend(120, 5);
 
 
 

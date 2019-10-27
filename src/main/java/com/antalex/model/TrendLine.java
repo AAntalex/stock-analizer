@@ -57,4 +57,8 @@ public class TrendLine {
     protected Integer getX1() {
         return this.x1;
     }
+
+    protected Integer getX2() {
+        return this.x2;
+    }
 }

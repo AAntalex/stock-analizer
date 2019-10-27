@@ -52,7 +52,14 @@ public class DataChartDtoConverter implements DtoConverter<DataChart, DataChartD
                 .minPercent(getPercentDelta(entity.getMinPrice(), open))
                 .maxPercent(getPercentDelta(entity.getMaxPrice(), open))
                 .quotes(
-                        dtoMapper.mapToList(entity.getQuotes(), QuoteGroupDto.class).stream()
+                        dtoMapper.mapToList(entity.getQuotes(), QuoteGroupDto.class)
+                                .stream()
+                                .filter(it ->
+                                        it.getOffer().getCandle().getOpen().compareTo(BigDecimal.ZERO) > 0 ||
+                                                it.getOffer().getCandle().getClose().compareTo(BigDecimal.ZERO) > 0 ||
+                                                it.getBid().getCandle().getOpen().compareTo(BigDecimal.ZERO) > 0 ||
+                                                it.getBid().getCandle().getClose().compareTo(BigDecimal.ZERO) > 0
+                                )
                                 .sorted(Comparator.comparing(QuoteGroupDto::getPrice))
                                 .map(it -> this.calcVolume(it, quoteGroupDto, false))
                                 .sorted(Comparator.comparing(QuoteGroupDto::getPrice).reversed())
