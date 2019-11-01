@@ -7,7 +7,6 @@ import com.antalex.holders.DateFormatHolder;
 import com.antalex.mapper.DtoMapper;
 import com.antalex.model.*;
 import com.antalex.persistence.entity.AllHistory;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -71,6 +70,8 @@ public class ChartFormer {
             dataChart = new DataChart();
             dataChart.setDate(date);
             data.put(date, dataChart);
+            dataChart.setIdx(data.size() - 1);
+            dataChart.setIsLast(false);
         }
         return dataChart;
     }
@@ -86,7 +87,10 @@ public class ChartFormer {
     private Trend getTrend(int period, int offset) {
         List<DataChart> dataList = this.cacheDadaChart.getDataList();
         Trend trend = trendService.getTrend(dataList, period, offset);
-        trendService.setTrendToIndicator(trend, dataList);
+        DataHolder.setTrend(
+                trendService.getTrendCode(period, offset),
+                trend);
+        trendService.setTrendToIndicator(trend, dataList, false);
         return trend;
     }
 
@@ -107,7 +111,7 @@ public class ChartFormer {
             if (trend.checkPoint(x, y)) {
                 snapShot.getTrend().setPoint(x, y);
             } else {
-                trendService.setTrendToIndicator(trend, dataList);
+                trendService.setTrendToIndicator(trend, dataList, true);
                 snapShot.setStart(x);
                 snapShot.setTrend(null);
             }
@@ -145,7 +149,12 @@ public class ChartFormer {
             }
             if (history.getTradeNum() != null) {
                 addPoint(addDeal(history));
+
+
+
             }
+
+
 
 
 //            test(history, dataChart);
@@ -394,10 +403,6 @@ public class ChartFormer {
 
     private DataChart addQuotes(AllHistory history) {
         DataChart dataChart = getDataChart(history.getUno());
-
-
-        dataChart.getAllHistory().add(history);
-
         List<String> quotesList = Arrays.asList(history.getQuotes().split(";"));
         HashMap<BigDecimal, BigDecimal> currentQuotesBid = new HashMap<>();
         HashMap<BigDecimal, BigDecimal> currentQuotesOffer = new HashMap<>();

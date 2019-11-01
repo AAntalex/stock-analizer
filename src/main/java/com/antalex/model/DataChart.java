@@ -1,6 +1,5 @@
 package com.antalex.model;
 
-import com.antalex.persistence.entity.AllHistory;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -9,7 +8,9 @@ import java.util.*;
 @Data
 public class DataChart {
     private Date date;
+    private Integer idx;
     private DataGroup data;
+    private Boolean isLast;
     private DataGroup dataBid;
     private DataGroup dataOffer;
     private BigDecimal maxPrice;
@@ -21,7 +22,4 @@ public class DataChart {
     private BigDecimal bidDown = BigDecimal.ZERO;
     private BigDecimal offerUp = BigDecimal.ZERO;
     private BigDecimal offerDown = BigDecimal.ZERO;
-
-
-    private List<AllHistory> allHistory = new ArrayList<>();
 }

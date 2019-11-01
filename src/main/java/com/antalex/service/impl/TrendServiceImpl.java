@@ -2,7 +2,7 @@ package com.antalex.service.impl;
 
 import com.antalex.model.DataChart;
 import com.antalex.model.Indicator;
-import com.antalex.model.IndicatorType;
+import com.antalex.model.enums.IndicatorType;
 import com.antalex.model.Trend;
 import com.antalex.service.TrendService;
 import org.springframework.stereotype.Service;
@@ -40,20 +40,32 @@ public class TrendServiceImpl implements TrendService {
     }
 
     @Override
-    public void setTrendToIndicator(Trend trend, List<DataChart> dataList) {
+    public String getTrendCode(Integer period, Integer offset) {
+        StringBuilder codeBuilder = new StringBuilder(TREND);
+        if (period > 0) {
+            codeBuilder
+                    .append(period);
+        }
+        if (offset > 0) {
+            codeBuilder
+                    .append('_')
+                    .append(offset);
+        }
+        return codeBuilder.toString();
+    }
+
+    @Override
+    public void setTrendToIndicator(Trend trend, List<DataChart> dataList, Boolean multiple) {
         if (trend == null) {
             return;
         }
-
-        StringBuilder codeBuilder = new StringBuilder(TREND);
-        if (trend.getPeriod() > 0) {
+        StringBuilder codeBuilder = new StringBuilder(getTrendCode(trend.getPeriod(), trend.getOffset()));
+        if (multiple) {
             codeBuilder
-                    .append(trend.getPeriod())
                     .append('_')
                     .append(trend.getStart())
                     .append('_')
                     .append(trend.getEnd() - trend.getStart() + 1);
-
         }
         String code = codeBuilder.append('_').toString();
         int start = Integer.max(trend.getStart() - trend.getOffset(), 0);

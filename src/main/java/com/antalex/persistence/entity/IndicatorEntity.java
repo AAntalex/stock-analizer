@@ -1,6 +1,6 @@
 package com.antalex.persistence.entity;
 
-import com.antalex.model.IndicatorType;
+import com.antalex.model.enums.IndicatorType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

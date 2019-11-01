@@ -24,7 +24,7 @@ public class TrendLine {
         this.y2 = y2;
     }
 
-    private BigDecimal getAlpha() {
+    public BigDecimal getAlpha() {
         return y2.subtract(y1).divide(BigDecimal.valueOf(x2 - x1), precision, RoundingMode.HALF_UP);
     }
 

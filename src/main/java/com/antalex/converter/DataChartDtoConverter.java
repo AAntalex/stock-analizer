@@ -5,7 +5,7 @@ import com.antalex.holders.DataHolder;
 import com.antalex.mapper.DtoConverter;
 import com.antalex.mapper.DtoMapper;
 import com.antalex.model.DataChart;
-import com.antalex.model.IndicatorType;
+import com.antalex.model.enums.IndicatorType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 

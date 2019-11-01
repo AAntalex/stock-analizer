@@ -24,4 +24,6 @@ public class ClassSecEntity {
     private Integer scale;
     @Column(name = "C_LOTSIZE")
     private Integer lotSize;
+    @Column(name = "ID")
+    private Long id;
 }

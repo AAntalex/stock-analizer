@@ -1,6 +1,7 @@
 package com.antalex.holders;
 
 import com.antalex.model.DataChart;
+import com.antalex.model.Trend;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -16,6 +17,7 @@ public class DataHolder {
     private static final ThreadLocal<BigDecimal> periodThreadLocal = new ThreadLocal<>();
     private static final ThreadLocal<Map<String, BigDecimal>> processedIndicatorThreadLocal = ThreadLocal.withInitial(HashMap::new);
     private static final ThreadLocal<DataChart> firstDataThreadLocal = new ThreadLocal<>();
+    private static final ThreadLocal<Map<String, Trend>> trendsThreadLocal = ThreadLocal.withInitial(HashMap::new);
 
     public static void setData(DataChart data) {
         dataThreadLocal.get().clear();
@@ -89,4 +91,13 @@ public class DataHolder {
     public static void setFirstData(DataChart data) {
         firstDataThreadLocal.set(data);
     }
+
+    public static void setTrend(String trendCode, Trend trend) {
+        trendsThreadLocal.get().put(trendCode, trend);
+    }
+
+    public static Trend trend(String trendCode) {
+        return trendsThreadLocal.get().get(trendCode);
+    }
+
 }

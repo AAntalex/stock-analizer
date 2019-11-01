@@ -1,5 +1,6 @@
 package com.antalex.model;
 
+import com.antalex.model.enums.IndicatorType;
 import lombok.Builder;
 import lombok.Data;
 

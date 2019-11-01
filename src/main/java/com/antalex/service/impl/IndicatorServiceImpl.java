@@ -2,9 +2,11 @@ package com.antalex.service.impl;
 
 import com.antalex.holders.DataHolder;
 import com.antalex.model.*;
+import com.antalex.model.enums.IndicatorType;
 import com.antalex.persistence.entity.IndicatorEntity;
 import com.antalex.persistence.entity.IndicatorPeriodEntity;
 import com.antalex.persistence.repository.IndicatorRepository;
+import com.antalex.service.DataChartService;
 import com.antalex.service.IndicatorService;
 import com.udojava.evalex.*;
 import com.udojava.evalex.Expression.LazyNumber;
@@ -20,34 +22,14 @@ import java.util.*;
 public class IndicatorServiceImpl implements IndicatorService {
     private static final String INDEX = "I";
     private static final String PERIOD = "N";
-    private static final String VOL = "VOL";
-    private static final String OPEN = "OPEN";
-    private static final String CLOSE = "CLOSE";
-    private static final String HIGH = "HIGH";
-    private static final String LOW = "LOW";
-    private static final String BID_VOL = "BID_VOL";
-    private static final String BID_OPEN = "BID_OPEN";
-    private static final String BID_CLOSE = "BID_CLOSE";
-    private static final String BID_HIGH = "BID_HIGH";
-    private static final String BID_LOW = "BID_LOW";
-    private static final String BID_UP = "BID_UP";
-    private static final String BID_DOWN = "BID_DOWN";
-    private static final String OFFER_UP = "OFFER_UP";
-    private static final String OFFER_DOWN = "OFFER_DOWN";
-    private static final String OFFER_VOL = "OFFER_VOL";
-    private static final String OFFER_OPEN = "OFFER_OPEN";
-    private static final String OFFER_CLOSE = "OFFER_CLOSE";
-    private static final String OFFER_HIGH = "OFFER_HIGH";
-    private static final String OFFER_LOW = "OFFER_LOW";
-
     private static final String SUFFIX_ITERABLE = "_I";
     private static final String SUM_INDICATOR = "SUM$%s_";
     private static final String SUM_FUNCTION = "SUM";
     private static final Map<String, IndicatorExpression> INDICATORS = new HashMap<>();
-
     private static final int PRECISION = 16;
 
     private final IndicatorRepository indicatorRepository;
+    private final DataChartService dataChartService;
 
     @Override
     public void calcAll(DataChart data) {
@@ -182,9 +164,7 @@ public class IndicatorServiceImpl implements IndicatorService {
     }
 
     private IndicatorExpression getIndicatorExpression(IndicatorEntity indicatorEntity) {
-        String expressionText = indicatorEntity.getExpression()
-                .replace(String.valueOf(" "), "")
-                .replace('.', '_');
+        String expressionText = normalizeExpression(indicatorEntity.getExpression());
 
         List<String> functions = new ArrayList<>();
         List<String> iterableFunctions = new ArrayList<>();
@@ -266,93 +246,6 @@ public class IndicatorServiceImpl implements IndicatorService {
             return BigDecimal.ZERO;
         }
         switch (variable.toUpperCase()) {
-            case VOL: {
-                return new BigDecimal(data.getData().getVolume());
-            }
-            case HIGH: {
-                return data.getData().getCandle().getHigh();
-            }
-            case LOW: {
-                return data.getData().getCandle().getLow();
-            }
-            case CLOSE: {
-                return data.getData().getCandle().getClose();
-            }
-            case OPEN: {
-                return data.getData().getCandle().getOpen();
-            }
-            case BID_VOL: {
-                return Optional.ofNullable(data.getDataBid())
-                        .map(DataGroup::getVolume)
-                        .map(BigDecimal::new)
-                        .orElse(BigDecimal.ZERO);
-            }
-            case BID_HIGH: {
-                return Optional.ofNullable(data.getDataBid())
-                        .map(DataGroup::getCandle)
-                        .map(Candlestick::getHigh)
-                        .orElse(null);
-            }
-            case BID_LOW: {
-                return Optional.ofNullable(data.getDataBid())
-                        .map(DataGroup::getCandle)
-                        .map(Candlestick::getLow)
-                        .orElse(null);
-            }
-            case BID_CLOSE: {
-                return Optional.ofNullable(data.getDataBid())
-                        .map(DataGroup::getCandle)
-                        .map(Candlestick::getClose)
-                        .orElse(null);
-            }
-            case BID_OPEN: {
-                return Optional.ofNullable(data.getDataBid())
-                        .map(DataGroup::getCandle)
-                        .map(Candlestick::getOpen)
-                        .orElse(null);
-            }
-            case OFFER_VOL: {
-                return Optional.ofNullable(data.getDataOffer())
-                        .map(DataGroup::getVolume)
-                        .map(BigDecimal::new)
-                        .orElse(BigDecimal.ZERO);
-            }
-            case OFFER_HIGH: {
-                return Optional.ofNullable(data.getDataOffer())
-                        .map(DataGroup::getCandle)
-                        .map(Candlestick::getHigh)
-                        .orElse(null);
-            }
-            case OFFER_LOW: {
-                return Optional.ofNullable(data.getDataOffer())
-                        .map(DataGroup::getCandle)
-                        .map(Candlestick::getLow)
-                        .orElse(null);
-            }
-            case OFFER_CLOSE: {
-                return Optional.ofNullable(data.getDataOffer())
-                        .map(DataGroup::getCandle)
-                        .map(Candlestick::getClose)
-                        .orElse(null);
-            }
-            case OFFER_OPEN: {
-                return Optional.ofNullable(data.getDataOffer())
-                        .map(DataGroup::getCandle)
-                        .map(Candlestick::getOpen)
-                        .orElse(null);
-            }
-            case BID_UP: {
-                return Optional.ofNullable(data.getBidUp()).orElse(BigDecimal.ZERO);
-            }
-            case BID_DOWN: {
-                return Optional.ofNullable(data.getBidDown()).orElse(BigDecimal.ZERO);
-            }
-            case OFFER_UP: {
-                return Optional.ofNullable(data.getOfferUp()).orElse(BigDecimal.ZERO);
-            }
-            case OFFER_DOWN: {
-                return Optional.ofNullable(data.getOfferDown()).orElse(BigDecimal.ZERO);
-            }
             case PERIOD: {
                 return DataHolder.period();
             }
@@ -360,8 +253,9 @@ public class IndicatorServiceImpl implements IndicatorService {
                 return new BigDecimal(index);
             }
             default: {
-                if (data.getIndicators().containsKey(variable)) {
-                    return data.getIndicators().get(variable).getValue();
+                BigDecimal value = dataChartService.getValue(data, variable);
+                if (value != null) {
+                    return value;
                 }
                 if (INDICATORS.containsKey(variable)) {
                     return Optional
@@ -380,16 +274,16 @@ public class IndicatorServiceImpl implements IndicatorService {
         }
     }
 
-    private Function createFunctionForIndicator(String function) {
-        return createFunctionForIndicator(function, false);
-    }
-
     private String getIndicatorCode(String indicatorName, int index) {
         return index == 0 ? indicatorName : indicatorName + index;
     }
 
     private String getIndicatorCode(String indicatorName) {
         return getIndicatorCode(indicatorName, DataHolder.period().intValue());
+    }
+
+    private Function createFunctionForIndicator(String function) {
+        return createFunctionForIndicator(function, false);
     }
 
     private Function createFunctionForIndicator(String function, Boolean iterable) {
@@ -488,5 +382,11 @@ public class IndicatorServiceImpl implements IndicatorService {
                 return RESULT;
             }
         };
+    }
+
+    private String normalizeExpression(String expression) {
+        return expression
+                .replace(String.valueOf(" "), "")
+                .replace('.', '_');
     }
 }

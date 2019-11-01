@@ -24,6 +24,7 @@ public class CacheDadaChart {
     public void setLastData(DataChart data) {
         this.dataList.add(data);
         this.lastData = data;
+        data.setIsLast(true);
 
         if (this.firstData == null) {
             this.firstData = data;

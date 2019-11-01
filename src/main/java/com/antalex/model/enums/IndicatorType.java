@@ -1,4 +1,4 @@
-package com.antalex.model;
+package com.antalex.model.enums;
 
 /**
  * Тип индикатора
