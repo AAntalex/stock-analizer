@@ -22,8 +22,7 @@ public class ChartFormer {
     private final DtoMapper dtoMapper;
     private final IndicatorService indicatorService;
     private final TrendService trendService;
-    private CacheDadaChart cacheDadaChart = new CacheDadaChart();
-
+    private final DataChartService dataChartService;
 
     private String buyOrder;
     private BigDecimal buyPrice;
@@ -42,10 +41,12 @@ public class ChartFormer {
     @Autowired
     ChartFormer(DtoMapper dtoMapper,
                 IndicatorService indicatorService,
-                TrendService trendService) {
+                TrendService trendService,
+                DataChartService dataChartService) {
         this.dtoMapper = dtoMapper;
         this.indicatorService = indicatorService;
         this.trendService = trendService;
+        this.dataChartService = dataChartService;
     }
 
     public void setApproximation(int approximation) {
@@ -62,13 +63,15 @@ public class ChartFormer {
         }
     }
 
-    private DataChart getDataChart(String uno) {
-        Map<Date, DataChart> data = this.cacheDadaChart.getData();
+    private DataChart getDataChart(String uno, Long secId) {
+        Map<Date, DataChart> data = dataChartService.getCache().getData();
         Date date = DateFormatHolder.getDateFromString(uno);
         DataChart dataChart = data.get(date);
         if (dataChart == null) {
             dataChart = new DataChart();
             dataChart.setDate(date);
+            dataChart.setUno(uno);
+            dataChart.setSecId(secId);
             data.put(date, dataChart);
             dataChart.setIdx(data.size() - 1);
             dataChart.setIsLast(false);
@@ -85,7 +88,7 @@ public class ChartFormer {
     }
 
     private Trend getTrend(int period, int offset) {
-        List<DataChart> dataList = this.cacheDadaChart.getDataList();
+        List<DataChart> dataList = dataChartService.getCache().getDataList();
         Trend trend = trendService.getTrend(dataList, period, offset);
         DataHolder.setTrend(
                 trendService.getTrendCode(period, offset),
@@ -95,11 +98,11 @@ public class ChartFormer {
     }
 
     private void addPointToTrend(Integer period) {
-        if (!this.cacheDadaChart.getTrends().containsKey(period)) {
-            this.cacheDadaChart.getTrends().put(period, new TrendSnapShot());
+        if (!dataChartService.getCache().getTrends().containsKey(period)) {
+            dataChartService.getCache().getTrends().put(period, new TrendSnapShot());
         }
-        TrendSnapShot snapShot = this.cacheDadaChart.getTrends().get(period);
-        List<DataChart> dataList = this.cacheDadaChart.getDataList();
+        TrendSnapShot snapShot = dataChartService.getCache().getTrends().get(period);
+        List<DataChart> dataList = dataChartService.getCache().getDataList();
         Trend trend = snapShot.getTrend();
         if (trend == null) {
             if (dataList.size() - period >= snapShot.getStart()) {
@@ -119,13 +122,13 @@ public class ChartFormer {
     }
 
     private void addPoint(DataChart dataChart){
-        if (Optional.ofNullable(this.cacheDadaChart.getLastData())
+        if (Optional.ofNullable(dataChartService.getCache().getLastData())
                 .map(DataChart::getDate)
                 .map(it -> it.compareTo(dataChart.getDate()) != 0)
                 .orElse(true))
         {
-            if (this.cacheDadaChart.getLastData() != null) {
-                dataChart.setPrev(this.cacheDadaChart.getLastData());
+            if (dataChartService.getCache().getLastData() != null) {
+                dataChart.setPrev(dataChartService.getCache().getLastData());
 /*
 
                 addPointToTrend(30);
@@ -133,15 +136,15 @@ public class ChartFormer {
                 addPointToTrend(120);
 
 */
-                indicatorService.calcAll(cacheDadaChart.getLastData());
+                indicatorService.calcAll(dataChartService.getCache().getLastData());
             }
-            this.cacheDadaChart.setLastData(dataChart);
+            dataChartService.getCache().setLastData(dataChart);
         }
     }
 
     public void add(AllHistory history) {
         String uno = history.getUno();
-        Map<String, AllHistory> allHistory = this.cacheDadaChart.getAllHistory();
+        Map<String, AllHistory> allHistory = dataChartService.getCache().getAllHistory();
         if (checkTime(uno) && !allHistory.containsKey(uno)) {
             allHistory.put(uno, history);
             if (history.getQuotes() != null) {
@@ -180,11 +183,11 @@ public class ChartFormer {
     private void test(AllHistory history, DataChart dataChart) {
         String uno = history.getUno();
 
-        if (this.cacheDadaChart.getData().size() < 20) {
+        if (dataChartService.getCache().getData().size() < 20) {
             return;
         }
 
-        dataChart = this.cacheDadaChart.getLastData();
+        dataChart = dataChartService.getCache().getLastData();
         HashMap<String, Indicator> indicators = dataChart.getPrev().getIndicators();
         HashMap<String, Indicator> prevIndicators = dataChart.getPrev().getPrev().getIndicators();
 /*
@@ -402,7 +405,7 @@ public class ChartFormer {
     }
 
     private DataChart addQuotes(AllHistory history) {
-        DataChart dataChart = getDataChart(history.getUno());
+        DataChart dataChart = getDataChart(history.getUno(), history.getSecId());
         List<String> quotesList = Arrays.asList(history.getQuotes().split(";"));
         HashMap<BigDecimal, BigDecimal> currentQuotesBid = new HashMap<>();
         HashMap<BigDecimal, BigDecimal> currentQuotesOffer = new HashMap<>();
@@ -441,7 +444,7 @@ public class ChartFormer {
                     .map(it -> new VolumeDto(it.getKey(), it.getValue()))
                     .collect(Collectors.toList());
 
-            Optional.ofNullable(this.cacheDadaChart.getLastBidQuotes())
+            Optional.ofNullable(dataChartService.getCache().getLastBidQuotes())
                     .filter(it -> !it.isEmpty())
                     .ifPresent(lastQuotes -> {
                         quotesList.stream()
@@ -481,7 +484,7 @@ public class ChartFormer {
                                 });
                     });
 
-             this.cacheDadaChart.setLastBidQuotes(quotesList);
+            dataChartService.getCache().setLastBidQuotes(quotesList);
         } else {
             quotesList = quotesSource.entrySet().stream()
                     .sorted(Map.Entry.comparingByKey())
@@ -489,7 +492,7 @@ public class ChartFormer {
                     .collect(Collectors.toList());
 
 
-            Optional.ofNullable(this.cacheDadaChart.getLastOfferQuotes())
+            Optional.ofNullable(dataChartService.getCache().getLastOfferQuotes())
                     .filter(it -> !it.isEmpty())
                     .ifPresent(lastQuotes -> {
                         quotesList.stream()
@@ -528,7 +531,7 @@ public class ChartFormer {
                                     dataChart.setOfferDown(result);
                                 });
                     });
-            this.cacheDadaChart.setLastOfferQuotes(quotesList);
+            dataChartService.getCache().setLastOfferQuotes(quotesList);
         }
 
         quotesSource
@@ -560,27 +563,27 @@ public class ChartFormer {
 
     private DataChart addDeal(AllHistory history) {
         if (Optional
-                .ofNullable(this.cacheDadaChart.getMaxPrice())
+                .ofNullable(dataChartService.getCache().getMaxPrice())
                 .map(it -> it.compareTo(history.getPrice()) < 0)
                 .orElse(true)) {
-            this.cacheDadaChart.setMaxPrice(history.getPrice());
+            dataChartService.getCache().setMaxPrice(history.getPrice());
         }
         if (Optional
-                .ofNullable(this.cacheDadaChart.getMinPrice())
+                .ofNullable(dataChartService.getCache().getMinPrice())
                 .map(it -> it.compareTo(history.getPrice()) > 0)
                 .orElse(true)) {
-            this.cacheDadaChart.setMinPrice(history.getPrice());
+            dataChartService.getCache().setMinPrice(history.getPrice());
         }
 
-        DataChart dataChart = getDataChart(history.getUno());
+        DataChart dataChart = getDataChart(history.getUno(), history.getSecId());
         dataChart.setData(addData(dataChart.getData(), history.getPrice(), history.getQty()));
         if (history.getBidFlag()) {
             dataChart.setDataBid(addData(dataChart.getDataBid(), history.getPrice(), history.getQty()));
         } else {
             dataChart.setDataOffer(addData(dataChart.getDataOffer(), history.getPrice(), history.getQty()));
         }
-        dataChart.setMinPrice(this.cacheDadaChart.getMinPrice());
-        dataChart.setMaxPrice(this.cacheDadaChart.getMaxPrice());
+        dataChart.setMinPrice(dataChartService.getCache().getMinPrice());
+        dataChart.setMaxPrice(dataChartService.getCache().getMaxPrice());
 
         return dataChart;
     }
@@ -611,14 +614,14 @@ public class ChartFormer {
     }
 
     public void init() {
-        this.cacheDadaChart = new CacheDadaChart();
+        dataChartService.dropCache();
 
         result = BigDecimal.ONE;
     }
 
     private List<DataChartDto> getDataList(Date dateBegin, Date dateEnd) {
         return dtoMapper.map(
-                this.cacheDadaChart.getData().values()
+                dataChartService.getCache().getData().values()
                         .stream()
                         .filter(it -> it.getData() != null && (dateBegin == null || it.getDate().compareTo(dateBegin) >= 0)
                                 && (dateEnd == null || it.getDate().compareTo(dateEnd) <= 0))
@@ -626,7 +629,7 @@ public class ChartFormer {
     }
 
     public List<DataChartDto> getDataList(String sDateBegin, String sDateEnd) {
-        DataHolder.setFirstData(this.cacheDadaChart.getFirstData());
+        DataHolder.setFirstData(dataChartService.getCache().getFirstData());
 
 
 

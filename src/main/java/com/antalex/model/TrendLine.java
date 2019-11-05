@@ -1,5 +1,6 @@
 package com.antalex.model;
 
+import com.antalex.holders.DataHolder;
 import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
@@ -7,8 +8,6 @@ import java.math.RoundingMode;
 
 @AllArgsConstructor
 public class TrendLine {
-    private final static Integer precision = 16;
-
     private Integer x1;
     private BigDecimal y1;
     private Integer x2;
@@ -25,7 +24,7 @@ public class TrendLine {
     }
 
     public BigDecimal getAlpha() {
-        return y2.subtract(y1).divide(BigDecimal.valueOf(x2 - x1), precision, RoundingMode.HALF_UP);
+        return y2.subtract(y1).divide(BigDecimal.valueOf(x2 - x1), DataHolder.PRECISION, RoundingMode.HALF_UP);
     }
 
     private BigDecimal getBetta() {

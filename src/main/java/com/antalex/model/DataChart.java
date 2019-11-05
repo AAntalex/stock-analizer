@@ -7,6 +7,8 @@ import java.util.*;
 
 @Data
 public class DataChart {
+    private String uno;
+    private Long secId;
     private Date date;
     private Integer idx;
     private DataGroup data;

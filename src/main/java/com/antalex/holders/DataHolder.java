@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.util.*;
 
 public class DataHolder {
+    public static final int PRECISION = 16;
     private DataHolder() {
         throw new IllegalStateException("Cache holder class!!!");
     }

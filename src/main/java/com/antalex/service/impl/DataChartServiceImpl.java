@@ -2,6 +2,7 @@ package com.antalex.service.impl;
 
 import com.antalex.holders.DataHolder;
 import com.antalex.model.*;
+import com.antalex.persistence.entity.IndicatorValueEntity;
 import com.antalex.service.DataChartService;
 import com.antalex.service.TrendService;
 import com.udojava.evalex.Expression;
@@ -11,9 +12,9 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
-@AllArgsConstructor
 public class DataChartServiceImpl implements DataChartService {
     private static final String VOL = "VOL";
     private static final String OPEN = "OPEN";
@@ -36,9 +37,26 @@ public class DataChartServiceImpl implements DataChartService {
     private static final String OFFER_LOW = "OFFER_LOW";
     private static final String TREND = "TREND";
     private static final String ALPHA = "ALPHA";
-    private static final int PRECISION = 16;
+    private CacheDadaChart cache;
 
     private final TrendService trendService;
+
+    DataChartServiceImpl(TrendService trendService) {
+        this.trendService = trendService;
+    }
+
+    @Override
+    public CacheDadaChart getCache() {
+        if (this.cache == null) {
+            this.cache = new CacheDadaChart();
+        }
+        return this.cache;
+    }
+
+    @Override
+    public void dropCache() {
+        this.cache = new CacheDadaChart();
+    }
 
     @Override
     public BigDecimal getValue(DataChart data, String variable) {
@@ -146,6 +164,26 @@ public class DataChartServiceImpl implements DataChartService {
         }
     }
 
+    private HashMap<String, Indicator> getIndicators(DataChart data) {
+        if (!data.getIsLast() && data.getPrev() != null) {
+            return data.getPrev().getIndicators();
+        }
+        return data.getIndicators();
+    }
+
+    @Override
+    public List<IndicatorValueEntity> getIndicatorValues(DataChart data) {
+        return getIndicators(data).values()
+                .stream()
+                .map(it -> {
+                    IndicatorValueEntity entity = new IndicatorValueEntity();
+                    entity.setCode(it.getCode());
+                    entity.setValue(it.getValue());
+                    return entity;
+                })
+                .collect(Collectors.toList());
+    }
+
     @Override
     public Boolean getBool(DataChart data, String boolExpression) {
         Expression expression = new Expression(
@@ -154,7 +192,7 @@ public class DataChartServiceImpl implements DataChartService {
                                 .replace(String.valueOf(" "), "")
                                 .replace('.', '_'))
         );
-        expression.setPrecision(PRECISION).setRoundingMode(RoundingMode.HALF_UP);
+        expression.setPrecision(DataHolder.PRECISION).setRoundingMode(RoundingMode.HALF_UP);
         expression.getUsedVariables()
                 .stream()
                 .distinct()
@@ -192,7 +230,7 @@ public class DataChartServiceImpl implements DataChartService {
         String code = trendService.getTrendCode(period, offset);
         Trend trend = DataHolder.trend(code);
         if (trend == null) {
-            throw new IllegalStateException(String.format("Not found TREND (period - %d, offset - %d)", period, offset));
+            trend = trendService.getTrend(this.cache.getDataList(), period, offset);
         }
         if (isAlpha) {
             return isHigh ? trend.getHigh().getAlpha() : trend.getLow().getAlpha();

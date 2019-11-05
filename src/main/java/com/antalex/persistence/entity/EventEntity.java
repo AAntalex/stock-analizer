@@ -21,6 +21,12 @@ public class EventEntity {
     private StatusType status;
     @Column(name = "C_EVENT_TYPE")
     private EventType type;
+    @OneToOne
+    @JoinColumn(name = "C_TAKE_PROFIT")
+    private TakeProfitTuneEntity takeProfit;
+    @OneToOne
+    @JoinColumn(name = "C_STOP_LIMIT")
+    private StopLimitTuneEntity stopLimit;
     @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "C_EVENT")
     private List<EventTriggerEntity> triggers = new ArrayList<>();

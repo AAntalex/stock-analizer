@@ -26,7 +26,6 @@ public class IndicatorServiceImpl implements IndicatorService {
     private static final String SUM_INDICATOR = "SUM$%s_";
     private static final String SUM_FUNCTION = "SUM";
     private static final Map<String, IndicatorExpression> INDICATORS = new HashMap<>();
-    private static final int PRECISION = 16;
 
     private final IndicatorRepository indicatorRepository;
     private final DataChartService dataChartService;
@@ -151,7 +150,7 @@ public class IndicatorServiceImpl implements IndicatorService {
         IndicatorExpression indicatorExpression = INDICATORS.get(indicator);
         Expression expression = new Expression(indicatorExpression.getIndicatorEntity().getExpression());
 
-        expression.setPrecision(PRECISION).setRoundingMode(RoundingMode.HALF_UP);
+        expression.setPrecision(DataHolder.PRECISION).setRoundingMode(RoundingMode.HALF_UP);
         indicatorExpression.getFunctions()
                 .forEach(expression::addFunction);
         indicatorExpression.getLazyFunctions()
