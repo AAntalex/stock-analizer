@@ -1,5 +1,6 @@
 package com.antalex.model;
 
+import com.antalex.persistence.entity.AllHistory;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -7,12 +8,11 @@ import java.util.*;
 
 @Data
 public class DataChart {
-    private String uno;
-    private Long secId;
+    private AllHistory history;
     private Date date;
+    private Boolean calcIndicator;
     private Integer idx;
     private DataGroup data;
-    private Boolean isLast;
     private DataGroup dataBid;
     private DataGroup dataOffer;
     private BigDecimal maxPrice;

@@ -22,4 +22,6 @@ public class TakeProfitEntity {
     private BigDecimal spread;
     @Column(name = "C_VOLUME")
     private Double volume;
+    @Column(name = "C_ACTIVE")
+    private Boolean active;
 }

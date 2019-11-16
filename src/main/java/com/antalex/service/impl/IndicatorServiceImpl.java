@@ -32,6 +32,7 @@ public class IndicatorServiceImpl implements IndicatorService {
 
     @Override
     public void calcAll(DataChart data) {
+        data.setCalcIndicator(true);
         DataHolder.setData(data);
 
         if (INDICATORS.isEmpty()) {
@@ -148,7 +149,7 @@ public class IndicatorServiceImpl implements IndicatorService {
 
     private Expression createExpression (String indicator, Integer index) {
         IndicatorExpression indicatorExpression = INDICATORS.get(indicator);
-        Expression expression = new Expression(indicatorExpression.getIndicatorEntity().getExpression());
+        Expression expression = new Expression(indicatorExpression.getExpression());
 
         expression.setPrecision(DataHolder.PRECISION).setRoundingMode(RoundingMode.HALF_UP);
         indicatorExpression.getFunctions()
@@ -203,8 +204,8 @@ public class IndicatorServiceImpl implements IndicatorService {
         if (pos < expressionText.length()) {
             expressionBuilder.append(expressionText.substring(pos));
         }
-        indicatorEntity.setExpression(expressionBuilder.toString());
         IndicatorExpression expression = new IndicatorExpression(indicatorEntity);
+        expression.setExpression(expressionBuilder.toString());
         expression.addLazyFunctions(sumFunction());
         functions
                 .stream()
@@ -386,6 +387,6 @@ public class IndicatorServiceImpl implements IndicatorService {
     private String normalizeExpression(String expression) {
         return expression
                 .replace(String.valueOf(" "), "")
-                .replace('.', '_');
+                .replace("->", "_");
     }
 }

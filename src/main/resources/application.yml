@@ -5,9 +5,13 @@ database:
   pass: IBSO
 
 hibernate:
-  dialect: org.hibernate.dialect.MySQLDialect
+  dialect: org.hibernate.dialect.Oracle10gDialect
+  jdbc.batch_size: 1000
+  order_inserts: true
+  order_updates: true
+  enable_lazy_load_no_trans: true
   show_sql: false
-  format_sql: true
+  format_sql: false
   id.new_generator_mappings: false
 
 logging:

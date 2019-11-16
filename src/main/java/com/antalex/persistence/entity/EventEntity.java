@@ -29,5 +29,5 @@ public class EventEntity {
     private StopLimitTuneEntity stopLimit;
     @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "C_EVENT")
-    private List<EventTriggerEntity> triggers = new ArrayList<>();
+    private List<EventTriggerEntity> triggers;
 }

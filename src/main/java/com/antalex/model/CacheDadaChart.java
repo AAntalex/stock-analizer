@@ -20,11 +20,13 @@ public class CacheDadaChart {
     private BigDecimal minPrice;
     private Trend curTrend;
     private final Map<Integer, TrendSnapShot> trends = new HashMap<>();
+    private final Map<String, BigDecimal> traceCalc = new HashMap<>();
 
     public void setLastData(DataChart data) {
         this.dataList.add(data);
+        data.setPrev(this.lastData);
         this.lastData = data;
-        data.setIsLast(true);
+
 
         if (this.firstData == null) {
             this.firstData = data;

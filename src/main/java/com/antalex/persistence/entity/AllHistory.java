@@ -31,6 +31,8 @@ public class AllHistory {
     private BigDecimal price;
     @Column(name = "LOTSIZE")
     private Integer lotSize;
+    @Column(name = "SEC_SCALE")
+    private Integer scale;
     @Column(name = "SEC_REF")
     private Long secId;
 }

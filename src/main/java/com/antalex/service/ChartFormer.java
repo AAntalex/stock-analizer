@@ -7,6 +7,8 @@ import com.antalex.holders.DateFormatHolder;
 import com.antalex.mapper.DtoMapper;
 import com.antalex.model.*;
 import com.antalex.persistence.entity.AllHistory;
+import com.antalex.persistence.entity.DealEntity;
+import com.antalex.persistence.entity.EventEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +25,7 @@ public class ChartFormer {
     private final IndicatorService indicatorService;
     private final TrendService trendService;
     private final DataChartService dataChartService;
+    private final TestService testService;
 
     private String buyOrder;
     private BigDecimal buyPrice;
@@ -42,11 +45,13 @@ public class ChartFormer {
     ChartFormer(DtoMapper dtoMapper,
                 IndicatorService indicatorService,
                 TrendService trendService,
-                DataChartService dataChartService) {
+                DataChartService dataChartService,
+                TestService testService) {
         this.dtoMapper = dtoMapper;
         this.indicatorService = indicatorService;
         this.trendService = trendService;
         this.dataChartService = dataChartService;
+        this.testService = testService;
     }
 
     public void setApproximation(int approximation) {
@@ -63,19 +68,18 @@ public class ChartFormer {
         }
     }
 
-    private DataChart getDataChart(String uno, Long secId) {
+    private DataChart getDataChart(AllHistory history) {
         Map<Date, DataChart> data = dataChartService.getCache().getData();
-        Date date = DateFormatHolder.getDateFromString(uno);
+        Date date = DateFormatHolder.getDateFromString(history.getUno());
         DataChart dataChart = data.get(date);
         if (dataChart == null) {
             dataChart = new DataChart();
             dataChart.setDate(date);
-            dataChart.setUno(uno);
-            dataChart.setSecId(secId);
             data.put(date, dataChart);
             dataChart.setIdx(data.size() - 1);
-            dataChart.setIsLast(false);
+            dataChart.setCalcIndicator(false);
         }
+        dataChart.setHistory(history);
         return dataChart;
     }
 
@@ -128,7 +132,6 @@ public class ChartFormer {
                 .orElse(true))
         {
             if (dataChartService.getCache().getLastData() != null) {
-                dataChart.setPrev(dataChartService.getCache().getLastData());
 /*
 
                 addPointToTrend(30);
@@ -140,9 +143,11 @@ public class ChartFormer {
             }
             dataChartService.getCache().setLastData(dataChart);
         }
+        testService.test(dataChart);
+
     }
 
-    public void add(AllHistory history) {
+    public synchronized void add(AllHistory history) {
         String uno = history.getUno();
         Map<String, AllHistory> allHistory = dataChartService.getCache().getAllHistory();
         if (checkTime(uno) && !allHistory.containsKey(uno)) {
@@ -152,9 +157,6 @@ public class ChartFormer {
             }
             if (history.getTradeNum() != null) {
                 addPoint(addDeal(history));
-
-
-
             }
 
 
@@ -405,7 +407,7 @@ public class ChartFormer {
     }
 
     private DataChart addQuotes(AllHistory history) {
-        DataChart dataChart = getDataChart(history.getUno(), history.getSecId());
+        DataChart dataChart = getDataChart(history);
         List<String> quotesList = Arrays.asList(history.getQuotes().split(";"));
         HashMap<BigDecimal, BigDecimal> currentQuotesBid = new HashMap<>();
         HashMap<BigDecimal, BigDecimal> currentQuotesOffer = new HashMap<>();
@@ -575,7 +577,7 @@ public class ChartFormer {
             dataChartService.getCache().setMinPrice(history.getPrice());
         }
 
-        DataChart dataChart = getDataChart(history.getUno(), history.getSecId());
+        DataChart dataChart = getDataChart(history);
         dataChart.setData(addData(dataChart.getData(), history.getPrice(), history.getQty()));
         if (history.getBidFlag()) {
             dataChart.setDataBid(addData(dataChart.getDataBid(), history.getPrice(), history.getQty()));
@@ -615,6 +617,7 @@ public class ChartFormer {
 
     public void init() {
         dataChartService.dropCache();
+        testService.init();
 
         result = BigDecimal.ONE;
     }

@@ -1,7 +1,7 @@
 package com.antalex.model.enums;
 
 /**
- * Статус
+ * Статус заявки
  */
 public enum DealStatusType {
     /**

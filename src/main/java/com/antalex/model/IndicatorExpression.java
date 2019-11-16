@@ -15,6 +15,7 @@ public class IndicatorExpression {
     private static final String TEMP_VARIABLE = "X";
 
     private String tempVariable;
+    private String expression;
     private IndicatorEntity indicatorEntity;
     private List<String> variables = new ArrayList<>();
     private List<Function> functions = new ArrayList<>();

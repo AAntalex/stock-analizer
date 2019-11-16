@@ -3,6 +3,7 @@ package com.antalex.service.impl;
 import com.antalex.holders.DataHolder;
 import com.antalex.model.*;
 import com.antalex.persistence.entity.IndicatorValueEntity;
+import com.antalex.persistence.entity.TraceValueEntity;
 import com.antalex.service.DataChartService;
 import com.antalex.service.TrendService;
 import com.udojava.evalex.Expression;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 @Component
 public class DataChartServiceImpl implements DataChartService {
     private static final String VOL = "VOL";
+    private static final String PRICE = "PRICE";
     private static final String OPEN = "OPEN";
     private static final String CLOSE = "CLOSE";
     private static final String HIGH = "HIGH";
@@ -38,6 +40,7 @@ public class DataChartServiceImpl implements DataChartService {
     private static final String TREND = "TREND";
     private static final String ALPHA = "ALPHA";
     private CacheDadaChart cache;
+    private Boolean trace = false;
 
     private final TrendService trendService;
 
@@ -54,13 +57,47 @@ public class DataChartServiceImpl implements DataChartService {
     }
 
     @Override
+    public void startTrace() {
+        this.cache.getTraceCalc().clear();
+        this.trace = true;
+    }
+
+    @Override
+    public void stopTrace() {
+        this.trace = false;
+    }
+
+    @Override
+    public List<TraceValueEntity> getTraceValues() {
+        return this.cache.getTraceCalc()
+                .entrySet()
+                .stream()
+                .map(it -> {
+                    TraceValueEntity entity = new TraceValueEntity();
+                    entity.setCode(it.getKey());
+                    entity.setValue(it.getValue());
+                    return entity;
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public void dropCache() {
         this.cache = new CacheDadaChart();
     }
 
     @Override
     public BigDecimal getValue(DataChart data, String variable) {
-        switch (variable.toUpperCase()) {
+        BigDecimal result = calcValue(data, variable);
+        if (this.trace) {
+            this.cache.getTraceCalc().put(variable, result);
+        }
+        return result;
+    }
+
+    private BigDecimal calcValue(DataChart data, String variable) {
+        variable = variable.toUpperCase();
+        switch (variable) {
             case VOL: {
                 return new BigDecimal(data.getData().getVolume());
             }
@@ -73,6 +110,7 @@ public class DataChartServiceImpl implements DataChartService {
             case CLOSE: {
                 return data.getData().getCandle().getClose();
             }
+            case PRICE:
             case OPEN: {
                 return data.getData().getCandle().getOpen();
             }
@@ -152,7 +190,7 @@ public class DataChartServiceImpl implements DataChartService {
                 if (data.getIndicators().containsKey(variable)) {
                     return data.getIndicators().get(variable).getValue();
                 }
-                if (!data.getIsLast() && data.getPrev() != null &&
+                if (!data.getCalcIndicator() && data.getPrev() != null &&
                         data.getPrev().getIndicators().containsKey(variable)) {
                     return data.getPrev().getIndicators().get(variable).getValue();
                 }
@@ -165,7 +203,7 @@ public class DataChartServiceImpl implements DataChartService {
     }
 
     private HashMap<String, Indicator> getIndicators(DataChart data) {
-        if (!data.getIsLast() && data.getPrev() != null) {
+        if (!data.getCalcIndicator() && data.getPrev() != null) {
             return data.getPrev().getIndicators();
         }
         return data.getIndicators();
@@ -190,13 +228,16 @@ public class DataChartServiceImpl implements DataChartService {
                 String.format("IF(%s,1,0)",
                         boolExpression
                                 .replace(String.valueOf(" "), "")
-                                .replace('.', '_'))
+                                .replace("->", "_"))
         );
         expression.setPrecision(DataHolder.PRECISION).setRoundingMode(RoundingMode.HALF_UP);
-        expression.getUsedVariables()
-                .stream()
-                .distinct()
-                .forEach(it -> expression.and(it, getValue(data, it)));
+        for (String variable : expression.getUsedVariables()) {
+            BigDecimal value = getValue(data, variable);
+            if (value == null) {
+                return false;
+            }
+            expression.and(variable, value);
+        }
         return expression.eval().compareTo(BigDecimal.ZERO) > 0;
     }
 

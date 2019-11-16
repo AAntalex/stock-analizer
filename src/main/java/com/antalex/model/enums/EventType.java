@@ -13,6 +13,14 @@ public enum EventType {
      */
     SELL,
     /**
+     * Take Profit
+     */
+    TAKE_PROFIT,
+    /**
+     * Stop Limit
+     */
+    STOP_LIMIT,
+    /**
      * Тестирование
      */
     TEST,

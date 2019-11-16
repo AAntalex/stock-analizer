@@ -13,19 +13,9 @@ import org.springframework.stereotype.Service;
 @Service
 @AllArgsConstructor
 public class EventServiceImpl implements EventService {
-    private static final String TEST = "TEST";
-
     private final EventRepository eventRepository;
     private final DataChartService dataChartService;
     private final DealService dealService;
-
-    @Override
-    public String getCheckCode(DataChart data, EventEntity event) {
-        return event.getTriggers()
-                .stream()
-                .map(it -> dataChartService.getBool(data, it.getTrigger().getCondition()) ? "1" : "0")
-                .reduce("", (a, b) -> a + b);
-    }
 
     @Override
     public EventEntity findByCode(String code) {
@@ -34,14 +24,19 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public void apply(DataChart data, EventEntity event) {
-        if (isTest(event) || check(data, event)) {
-            if (!isTest(event)) {
-                dealService.newDeal(data, event, event.getType(), null);
-            } else {
-                String checkCode = getCheckCode(data, event);
-                dealService.newDeal(data, event, EventType.BUY, checkCode);
-                dealService.newDeal(data, event, EventType.SELL, checkCode);
-            }
+        if (
+                (event.getType() == EventType.BUY || event.getType() == EventType.SELL) &&
+                        check(data, event))
+        {
+            dealService.newDeal(
+                    data,
+                    event,
+                    event.getType(),
+                    null,
+                    1d,
+                    null,
+                    null
+            );
         }
     }
 
@@ -49,10 +44,6 @@ public class EventServiceImpl implements EventService {
         return !event.getTriggers()
                 .stream()
                 .allMatch(it -> dataChartService.getBool(data, it.getTrigger().getCondition()));
-    }
-
-    private Boolean isTest(EventEntity event) {
-        return TEST.equals(event.getCode());
     }
 }
 

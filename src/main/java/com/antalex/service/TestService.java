@@ -9,6 +9,6 @@ import com.antalex.persistence.entity.EventEntity;
 import java.math.BigDecimal;
 
 public interface TestService {
-    BigDecimal getBuyPrice(DealEntity deal, AllHistory history);
-    BigDecimal getSellPrice(DealEntity deal, AllHistory history);
+    void test(DataChart data);
+    void init();
 }

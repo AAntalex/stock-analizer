@@ -20,12 +20,24 @@ public class DealEntity {
     private Long id;
     @Column(name = "C_SEC_REF")
     private Long secId;
+    @Column(name = "C_LOT_SIZE")
+    private Integer lotSize;
+    @Column(name = "C_SCALE")
+    private Integer scale;
     @Column(name = "C_DEAL_TYPE")
     private EventType type;
     @Column(name = "C_UNO")
     private String uno;
     @Column(name = "C_PRICE")
     private BigDecimal price;
+    @Column(name = "C_LIMIT_PRICE")
+    private BigDecimal limitPrice;
+    @Column(name = "C_MAX_PRICE")
+    private BigDecimal maxPrice;
+    @Column(name = "C_MIN_PRICE")
+    private BigDecimal minPrice;
+    @Column(name = "C_RESULT")
+    private BigDecimal result;
     @Column(name = "C_VOLUME")
     private Double volume;
     @Column(name = "C_CAPTION")
@@ -36,16 +48,21 @@ public class DealEntity {
     @JoinColumn(name = "C_EVENT")
     private EventEntity event;
     @OneToOne
-    @JoinColumn(name = "C_CHILD")
-    private DealEntity child;
-    @OneToOne
+    @JoinColumn(name = "C_MAIN")
+    private DealEntity main;
+    @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "C_TAKE_PROFIT")
     private TakeProfitEntity takeProfit;
-    @OneToOne
+    @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "C_STOP_LIMIT")
     private StopLimitEntity stopLimit;
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "C_PARENT")
     private List<IndicatorValueEntity> indicators = new ArrayList<>();
-
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "C_PARENT")
+    private List<TraceValueEntity> traceValues = new ArrayList<>();
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "C_PARENT")
+    private List<RateValueEntity> rates = new ArrayList<>();
 }

@@ -5,11 +5,11 @@ package com.antalex.model.enums;
  */
 public enum StatusType {
     /**
-     * Включен
+     * Активный
      */
-    ENABLE,
+    ENABLED,
     /**
      * Отключен
      */
-    DISABLE,
+    DISABLEЫ,
 }
