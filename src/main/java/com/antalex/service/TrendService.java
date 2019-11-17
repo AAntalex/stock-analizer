@@ -8,5 +8,4 @@ import java.util.List;
 public interface TrendService {
     Trend getTrend(List<DataChart> dataList, Integer period, Integer offset);
     String getTrendCode(Integer period, Integer offset);
-    void setTrendToIndicator(Trend trend, List<DataChart> dataList, Boolean multiple);
 }

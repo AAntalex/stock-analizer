@@ -7,13 +7,10 @@ import com.antalex.holders.DateFormatHolder;
 import com.antalex.mapper.DtoMapper;
 import com.antalex.model.*;
 import com.antalex.persistence.entity.AllHistory;
-import com.antalex.persistence.entity.DealEntity;
-import com.antalex.persistence.entity.EventEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -26,20 +23,6 @@ public class ChartFormer {
     private final TrendService trendService;
     private final DataChartService dataChartService;
     private final TestService testService;
-
-    private String buyOrder;
-    private BigDecimal buyPrice;
-    private String sellOrder;
-    private BigDecimal sellPrice;
-
-    private BigDecimal pBid;
-    private BigDecimal pOffer;
-    private BigDecimal rsiBuy;
-    private BigDecimal rsiSell;
-    private BigDecimal rsiBuyPrev;
-    private BigDecimal rsiSellPrev;
-    private BigDecimal result = BigDecimal.ONE;
-
 
     @Autowired
     ChartFormer(DtoMapper dtoMapper,
@@ -83,22 +66,20 @@ public class ChartFormer {
         return dataChart;
     }
 
-    private Trend getTrend() {
-        return getTrend(0, 0);
+    private void setTrend() {
+        setTrend(0, 0);
     }
 
-    private Trend getTrend(int period) {
-        return getTrend(period, 0);
+    private void setTrend(int period) {
+        setTrend(period, 0);
     }
 
-    private Trend getTrend(int period, int offset) {
-        List<DataChart> dataList = dataChartService.getCache().getDataList();
-        Trend trend = trendService.getTrend(dataList, period, offset);
-        DataHolder.setTrend(
-                trendService.getTrendCode(period, offset),
-                trend);
-        trendService.setTrendToIndicator(trend, dataList, false);
-        return trend;
+    private void setTrend(int period, int offset) {
+        indicatorService.setTrendToIndicator(
+                dataChartService.getTrend(period, offset),
+                dataChartService.getCache().getDataList(),
+                false
+        );
     }
 
     private void addPointToTrend(Integer period) {
@@ -118,7 +99,7 @@ public class ChartFormer {
             if (trend.checkPoint(x, y)) {
                 snapShot.getTrend().setPoint(x, y);
             } else {
-                trendService.setTrendToIndicator(trend, dataList, true);
+                indicatorService.setTrendToIndicator(trend, dataList, true);
                 snapShot.setStart(x);
                 snapShot.setTrend(null);
             }
@@ -143,7 +124,7 @@ public class ChartFormer {
             }
             dataChartService.getCache().setLastData(dataChart);
         }
-        testService.test(dataChart);
+//        testService.test(dataChart);
 
     }
 
@@ -175,234 +156,6 @@ public class ChartFormer {
 
 
 
-        }
-    }
-
-
-
-
-
-    private void test(AllHistory history, DataChart dataChart) {
-        String uno = history.getUno();
-
-        if (dataChartService.getCache().getData().size() < 20) {
-            return;
-        }
-
-        dataChart = dataChartService.getCache().getLastData();
-        HashMap<String, Indicator> indicators = dataChart.getPrev().getIndicators();
-        HashMap<String, Indicator> prevIndicators = dataChart.getPrev().getPrev().getIndicators();
-/*
-
-            if (indicators.containsKey("RSI14") &&
-                    indicators.get("RSI14").getValue().compareTo(BigDecimal.valueOf(70)) > 0 &&
-                    buyOrder == null &&
-                    dataChart.getOfferDown().subtract(dataChart.getOfferUp()).compareTo(BigDecimal.ZERO) > 0 &&
-                    dataChart.getBidDown().subtract(dataChart.getBidUp()).compareTo(BigDecimal.ZERO) <= 0)
-            {
-                System.out.println("AAA "
-                        + dataChart.getOfferDown().subtract(dataChart.getOfferUp())
-                        + " "
-                        + dataChart.getBidDown().subtract(dataChart.getBidUp())
-                        + " "
-                );
-            }
-
-*/
-
-        if (buyOrder == null &&
-/*
-                    dataChart.getOfferDown().subtract(dataChart.getOfferUp()).compareTo(BigDecimal.ZERO) > 0 &&
-                    dataChart.getBidDown().subtract(dataChart.getBidUp()).compareTo(BigDecimal.ZERO) <= 0 &&
-*/
-                indicators.get("P_OFFER").getValue().compareTo(BigDecimal.ZERO) > 0 &&
-                dataChart.getOfferDown().subtract(dataChart.getOfferUp()).compareTo(BigDecimal.ZERO) > 0 &&
-                dataChart.getOfferDown().subtract(dataChart.getOfferUp()).compareTo(indicators.get("P_OFFER").getValue()) > 0 &&
-                dataChart.getOfferDown().subtract(dataChart.getOfferUp()).compareTo(indicators.get("P_BID").getValue()) > 0 &&
-                dataChart.getOfferDown().subtract(dataChart.getOfferUp()).compareTo(dataChart.getBidDown().subtract(dataChart.getBidUp())) > 0 &&
-
-
-/*
-                    indicators.get("P_OFFER").getValue().compareTo(BigDecimal.ZERO) > 0 &&
-                    indicators.get("P_BID").getValue().compareTo(BigDecimal.ZERO) == 0 &&
-*/
-
-
-                indicators.containsKey("RSI14") &&
-                indicators.get("RSI14").getValue().compareTo(BigDecimal.valueOf(70)) > 0 &&
-                prevIndicators.containsKey("RSI14") &&
-                indicators.get("RSI14").getValue().compareTo(prevIndicators.get("RSI14").getValue()) > 0
-                )
-        {
-            buyOrder = uno;
-
-            pOffer = dataChart.getOfferDown().subtract(dataChart.getOfferUp());
-            rsiBuy = indicators.get("RSI14").getValue();
-            rsiBuyPrev = prevIndicators.get("RSI14").getValue();
-
-            System.out.println("AAA !!!!!!!!!!!!!! pOffer " + pOffer + " rsiBuy " + rsiBuy + " rsiBuyPrev = " + rsiBuyPrev + " uno = " + uno);
-        }
-
-        if (sellOrder == null && buyPrice != null &&
-                (
-/*
-                            dataChart.getBidDown().subtract(dataChart.getBidUp()).compareTo(dataChart.getOfferDown().subtract(dataChart.getOfferUp())) > 0
-*/
-                        indicators.get("P_BID").getValue().compareTo(indicators.get("P_OFFER").getValue()) > 0
-                                || indicators.get("RSI14").getValue().compareTo(BigDecimal.valueOf(70)) < 0
-                )
-                )
-        {
-            sellOrder = uno;
-
-            pBid = indicators.get("P_BID").getValue();
-            rsiBuy = indicators.get("RSI14").getValue();
-
-            System.out.println("AAA sellOrder " + sellOrder + " pBid " + pBid + " rsiBuy " + rsiBuy);
-        }
-
-        if (buyOrder != null && buyPrice == null &&
-                new BigDecimal(uno.substring(0, 14))
-                        .subtract(new BigDecimal(buyOrder.substring(0, 14)))
-                        .compareTo(BigDecimal.ZERO) > 0)
-        {
-            buyPrice = dataChart.getQuotes()
-                    .entrySet()
-                    .stream()
-                    .sorted(Map.Entry.comparingByKey())
-                    .filter(it -> it.getValue()
-                            .getOffer()
-                            .getCandle()
-                            .getClose()
-                            .compareTo(BigDecimal.ZERO) > 0)
-                    .findFirst()
-
-                    .map(it -> it.getKey())
-
-/*
-                        .map(it ->
-                                it.getKey().max(
-                                        Optional
-                                                .ofNullable(history.getPrice())
-                                                .orElse(BigDecimal.ZERO)
-                                )
-                        )
-*/
-                    .orElse(null);
-
-            System.out.println("AAA buyPrice " + buyPrice + " uno = " + uno);
-        }
-
-
-
-
-
-
-        if (sellOrder == null &&
-/*
-                    dataChart.getBidDown().subtract(dataChart.getBidUp()).compareTo(BigDecimal.ZERO) > 0 &&
-                    dataChart.getOfferDown().subtract(dataChart.getOfferUp()).compareTo(BigDecimal.ZERO) <= 0 &&
-*/
-
-                indicators.get("P_BID").getValue().compareTo(BigDecimal.ZERO) > 0 &&
-                dataChart.getBidDown().subtract(dataChart.getBidUp()).compareTo(BigDecimal.ZERO) > 0 &&
-                dataChart.getBidDown().subtract(dataChart.getBidUp()).compareTo(indicators.get("P_BID").getValue()) > 0 &&
-                dataChart.getBidDown().subtract(dataChart.getBidUp()).compareTo(indicators.get("P_OFFER").getValue()) > 0 &&
-                dataChart.getBidDown().subtract(dataChart.getBidUp()).compareTo(dataChart.getOfferDown().subtract(dataChart.getOfferUp())) > 0 &&
-
-/*
-                    indicators.get("P_OFFER").getValue().compareTo(BigDecimal.ZERO) == 0 &&
-                    indicators.get("P_BID").getValue().compareTo(BigDecimal.ZERO) > 0 &&
-*/
-
-                indicators.containsKey("RSI14") &&
-                indicators.get("RSI14").getValue().compareTo(BigDecimal.valueOf(30)) < 0 &&
-                prevIndicators.containsKey("RSI14") &&
-                indicators.get("RSI14").getValue().compareTo(prevIndicators.get("RSI14").getValue()) < 0)
-        {
-            sellOrder = uno;
-
-
-            pBid = dataChart.getBidDown().subtract(dataChart.getBidUp());
-            rsiSell = indicators.get("RSI14").getValue();
-            rsiSellPrev = prevIndicators.get("RSI14").getValue();
-
-            System.out.println("AAA !!!!!!!!!!!!!! pBid " + pBid + " rsiSell " + rsiSell + " rsiSellPrev = " + rsiSellPrev + " uno = " + uno);
-
-        }
-
-        if (buyOrder == null && sellPrice != null &&
-                (
-/*
-                            dataChart.getOfferDown().subtract(dataChart.getOfferUp()).compareTo(dataChart.getBidDown().subtract(dataChart.getBidUp())) > 0
-*/
-                        indicators.get("P_OFFER").getValue().compareTo(indicators.get("P_BID").getValue()) > 0
-                                || indicators.get("RSI14").getValue().compareTo(BigDecimal.valueOf(30)) > 0
-                )
-                )
-        {
-            buyOrder = uno;
-
-            pOffer = indicators.get("P_OFFER").getValue();
-            rsiSell = indicators.get("RSI14").getValue();
-            System.out.println("AAA buyOrder " + buyOrder + " pOffer " + pOffer + " rsiSell " + rsiSell);
-        }
-
-        if (sellOrder != null && sellPrice == null &&
-                new BigDecimal(uno.substring(0, 14))
-                        .subtract(new BigDecimal(sellOrder.substring(0, 14)))
-                        .compareTo(BigDecimal.ZERO) > 0)
-        {
-            sellPrice = dataChart.getQuotes()
-                    .entrySet()
-                    .stream()
-                    .sorted(Map.Entry.comparingByKey(Comparator.reverseOrder()))
-                    .filter(it -> it.getValue()
-                            .getBid()
-                            .getCandle()
-                            .getClose()
-                            .compareTo(BigDecimal.ZERO) > 0
-                    )
-                    .findFirst()
-
-                    .map(it -> it.getKey())
-
-                    /*                     .map(it ->
-                                                 it.getKey().min(
-                                                         Optional
-                                                                 .ofNullable(history.getPrice())
-                                                                 .orElse(it.getKey())
-                                                 )
-                                         )
-                    */
-                    .orElse(null);
-
-            System.out.println("AAA sellPrice " + sellPrice + " uno = " + uno);
-        }
-
-
-
-
-
-        if (sellPrice != null && buyPrice != null) {
-            System.out.println("AAA sellPrice " + sellPrice + " buyPrice " + buyPrice);
-
-            BigDecimal result = (sellPrice
-                    .divide(buyPrice, 4, RoundingMode.HALF_UP)
-                    .subtract(BigDecimal.ONE))
-                    .multiply(BigDecimal.valueOf(100));
-
-            this.result = this.result.multiply(
-                    sellPrice
-                            .divide(buyPrice, 4, RoundingMode.HALF_UP)
-            );
-
-            System.out.println("AAA result " + result + " globalResult = " + this.result);
-
-            sellPrice = null;
-            buyPrice = null;
-            buyOrder = null;
-            sellOrder = null;
         }
     }
 
@@ -618,8 +371,6 @@ public class ChartFormer {
     public void init() {
         dataChartService.dropCache();
         testService.init();
-
-        result = BigDecimal.ONE;
     }
 
     private List<DataChartDto> getDataList(Date dateBegin, Date dateEnd) {
@@ -635,11 +386,10 @@ public class ChartFormer {
         DataHolder.setFirstData(dataChartService.getCache().getFirstData());
 
 
-
-        getTrend(0, 5);
-        getTrend(30, 5);
-        getTrend(60, 5);
-        getTrend(120, 5);
+        setTrend(0, 5);
+        setTrend(30, 5);
+        setTrend(60, 5);
+        setTrend(120, 5);
 
 
 

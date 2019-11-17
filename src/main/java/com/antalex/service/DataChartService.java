@@ -2,6 +2,7 @@ package com.antalex.service;
 
 import com.antalex.model.CacheDadaChart;
 import com.antalex.model.DataChart;
+import com.antalex.model.Trend;
 import com.antalex.persistence.entity.IndicatorValueEntity;
 import com.antalex.persistence.entity.TraceValueEntity;
 
@@ -17,4 +18,5 @@ public interface DataChartService {
     void startTrace();
     void stopTrace();
     List<TraceValueEntity> getTraceValues();
+    Trend getTrend(Integer period, Integer offset);
 }

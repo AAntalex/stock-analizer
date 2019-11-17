@@ -7,7 +7,6 @@ import com.antalex.persistence.entity.TraceValueEntity;
 import com.antalex.service.DataChartService;
 import com.antalex.service.TrendService;
 import com.udojava.evalex.Expression;
-import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -241,6 +240,17 @@ public class DataChartServiceImpl implements DataChartService {
         return expression.eval().compareTo(BigDecimal.ZERO) > 0;
     }
 
+    @Override
+    public Trend getTrend(Integer period, Integer offset) {
+        String code = trendService.getTrendCode(period, offset);
+        Trend trend = DataHolder.trend(code);
+        if (trend == null) {
+            trend = trendService.getTrend(this.cache.getDataList(), period, offset);
+            DataHolder.setTrend(code, trend);
+        }
+        return trend;
+    }
+
     private BigDecimal getTrendValue(DataChart data, String variable) {
         String trendCode = null;
         Boolean isHigh = null;
@@ -268,11 +278,7 @@ public class DataChartServiceImpl implements DataChartService {
         if (isHigh == null) {
             throw new IllegalStateException("Incorrect format of variable TREND");
         }
-        String code = trendService.getTrendCode(period, offset);
-        Trend trend = DataHolder.trend(code);
-        if (trend == null) {
-            trend = trendService.getTrend(this.cache.getDataList(), period, offset);
-        }
+        Trend trend = getTrend(period, offset);
         if (isAlpha) {
             return isHigh ? trend.getHigh().getAlpha() : trend.getLow().getAlpha();
         }

@@ -8,6 +8,7 @@ import com.antalex.persistence.entity.IndicatorPeriodEntity;
 import com.antalex.persistence.repository.IndicatorRepository;
 import com.antalex.service.DataChartService;
 import com.antalex.service.IndicatorService;
+import com.antalex.service.TrendService;
 import com.udojava.evalex.*;
 import com.udojava.evalex.Expression.LazyNumber;
 import lombok.AllArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.stream.IntStream;
 
 @Component
 @AllArgsConstructor
@@ -25,10 +27,15 @@ public class IndicatorServiceImpl implements IndicatorService {
     private static final String SUFFIX_ITERABLE = "_I";
     private static final String SUM_INDICATOR = "SUM$%s_";
     private static final String SUM_FUNCTION = "SUM";
+    private static final String HIGH = "HIGH";
+    private static final String LOW = "LOW";
+    private static final String TREND = "TREND";
+
     private static final Map<String, IndicatorExpression> INDICATORS = new HashMap<>();
 
     private final IndicatorRepository indicatorRepository;
     private final DataChartService dataChartService;
+    private final TrendService trendService;
 
     @Override
     public void calcAll(DataChart data) {
@@ -64,6 +71,49 @@ public class IndicatorServiceImpl implements IndicatorService {
     @Override
     public void init() {
         INDICATORS.clear();
+    }
+
+    @Override
+    public void setTrendToIndicator(Trend trend, List<DataChart> dataList, Boolean multiple) {
+        if (trend == null) {
+            return;
+        }
+        StringBuilder codeBuilder = new StringBuilder(trendService.getTrendCode(trend.getPeriod(), trend.getOffset()));
+        if (multiple) {
+            codeBuilder
+                    .append('_')
+                    .append(trend.getStart())
+                    .append('_')
+                    .append(trend.getEnd() - trend.getStart() + 1);
+        }
+        String code = codeBuilder.append('_').toString();
+        int start = Integer.max(trend.getStart() - trend.getOffset(), 0);
+        int end = Integer.min(trend.getEnd() + trend.getOffset() + 1, dataList.size());
+        IntStream.range(start, end)
+                .forEach(
+                        idx -> {
+                            HashMap<String, Indicator> indicators = dataList.get(idx).getIndicators();
+                            indicators.put(
+                                    code + HIGH,
+                                    Indicator.builder()
+                                            .period(trend.getPeriod())
+                                            .value(trend.getHigh().f(idx))
+                                            .code(code + HIGH)
+                                            .name(TREND)
+                                            .type(IndicatorType.TREND)
+                                            .build()
+                            );
+                            indicators.put(
+                                    code + LOW,
+                                    Indicator.builder()
+                                            .period(trend.getPeriod())
+                                            .value(trend.getLow().f(idx))
+                                            .code(code + LOW)
+                                            .name(TREND)
+                                            .type(IndicatorType.TREND)
+                                            .build()
+                            );
+                        });
     }
 
     private BigDecimal evaluate(String indicator, Integer index) {

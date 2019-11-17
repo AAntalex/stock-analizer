@@ -24,6 +24,7 @@ public class DataHolder {
         dataThreadLocal.get().clear();
         processedIndicatorThreadLocal.get().clear();
         dataThreadLocal.get().add(data);
+        trendsThreadLocal.get().clear();
     }
 
     public static DataChart data() {
