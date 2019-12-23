@@ -65,4 +65,8 @@ public class DealEntity {
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "C_PARENT")
     private List<RateValueEntity> rates = new ArrayList<>();
+    @Transient
+    private List<BigDecimal> boolTriggerValues = new ArrayList<>();
+    @Transient
+    private List<BigDecimal> deltaTriggerValues = new ArrayList<>();
 }

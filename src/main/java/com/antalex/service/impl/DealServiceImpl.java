@@ -1,5 +1,7 @@
 package com.antalex.service.impl;
 
+import com.antalex.holders.BatchDataHolder;
+import com.antalex.holders.DataChartHolder;
 import com.antalex.holders.DataHolder;
 import com.antalex.model.DataChart;
 import com.antalex.model.enums.DealStatusType;
@@ -16,14 +18,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Stream;
 
 @Service
 @AllArgsConstructor
 public class DealServiceImpl implements DealService {
+    private static final Map<String, DealEntity> CACHE = new LinkedHashMap<>();
+
     private final DealRepository dealRepository;
     private final DataChartService dataChartService;
     private final TariffPlanService tariffPlanService;
@@ -33,6 +35,9 @@ public class DealServiceImpl implements DealService {
     public DealEntity save(DealEntity entity) {
         if (entity == null) {
             return null;
+        }
+        if (Optional.ofNullable(DataChartHolder.isTest()).orElse(false)) {
+            return entity;
         }
 /*
 
@@ -49,7 +54,33 @@ public class DealServiceImpl implements DealService {
         );
 
 */
-        return dealRepository.save(entity);
+        if (BatchDataHolder.getBachSize() > 0) {
+            CACHE.put(getHashCode(entity), entity);
+            if (CACHE.size() >= BatchDataHolder.getBachSize()) {
+                procBatch();
+            }
+            return entity;
+        } else {
+            return dealRepository.save(entity);
+        }
+    }
+
+    @Override
+    public void startBatch(Integer batchSize) {
+        BatchDataHolder.setBatchSize(batchSize);
+        CACHE.clear();
+    }
+
+    @Override
+    public void stopBatch() {
+        BatchDataHolder.setBatchSize(0);
+        procBatch();
+    }
+
+    @Transactional
+    protected void procBatch() {
+        CACHE.values().forEach(dealRepository::save);
+        CACHE.clear();
     }
 
     @Override
@@ -60,6 +91,11 @@ public class DealServiceImpl implements DealService {
     @Override
     public List<DealEntity> findAllByEvent(EventEntity event) {
         return dealRepository.findAllByEvent(event);
+    }
+
+    @Override
+    public List<DealEntity> getProcessedDeals(EventEntity event, DealStatusType status, EventType type) {
+        return dealRepository.findAllByEventAndStatusAndTypeAndResultIsNotNullOrderByUno(event, status, type);
     }
 
     @Override
@@ -87,7 +123,7 @@ public class DealServiceImpl implements DealService {
         deal.setTraceValues(dataChartService.getTraceValues());
         deal.setStopLimit(getStopLimit(deal, data.getData().getCandle().getClose()));
         deal.setTakeProfit(getTakeProfit(deal, data.getData().getCandle().getClose()));
-        return save(deal);
+        return this.save(deal);
     }
 
     @Override
@@ -177,6 +213,12 @@ public class DealServiceImpl implements DealService {
             }
             this.save(deal);
         }
+    }
+
+    private String getHashCode(DealEntity entity) {
+        return entity.getUno() +
+                entity.getType().name() +
+                Optional.ofNullable(entity.getMain()).map(DealEntity::getUno).orElse("");
     }
 
     private BigDecimal getSum(DealEntity deal) {

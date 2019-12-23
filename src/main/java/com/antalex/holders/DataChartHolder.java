@@ -1,23 +1,21 @@
 package com.antalex.holders;
 
-import com.antalex.model.CacheDadaChart;
 import org.springframework.web.context.request.RequestContextHolder;
-import static org.springframework.web.context.request.RequestAttributes.SCOPE_SESSION;
+
+import static org.springframework.web.context.request.RequestAttributes.SCOPE_REQUEST;
 
 public class DataChartHolder {
     private DataChartHolder() {
         throw new IllegalStateException("Cache holder class!!!");
     }
 
-    public static void setCacheDataChart(CacheDadaChart data) {
+    public static Boolean isTest() {
+        return (Boolean) RequestContextHolder.getRequestAttributes()
+                .getAttribute("test", SCOPE_REQUEST);
     }
 
-    public static CacheDadaChart cacheDadaChart() {
-        return (CacheDadaChart) RequestContextHolder.getRequestAttributes()
-                .getAttribute("cacheDadaChart", SCOPE_SESSION);
+    public static void setTest(Boolean test) {
+        RequestContextHolder.getRequestAttributes().setAttribute("test", test, SCOPE_REQUEST);
     }
 
-    public static void setCacheDadaChart(CacheDadaChart cacheDadaChart) {
-        RequestContextHolder.getRequestAttributes().setAttribute("cacheDadaChart", cacheDadaChart, SCOPE_SESSION);
-    }
 }

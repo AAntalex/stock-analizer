@@ -1,15 +1,15 @@
 package com.antalex.service.impl;
 
+import com.antalex.model.AnaliseResultRow;
 import com.antalex.model.DataChart;
+import com.antalex.model.AnaliseResultTable;
 import com.antalex.model.enums.DealStatusType;
 import com.antalex.model.enums.EventType;
 import com.antalex.persistence.entity.*;
-import com.antalex.service.DataChartService;
-import com.antalex.service.DealService;
-import com.antalex.service.EventService;
-import com.antalex.service.TestService;
+import com.antalex.service.*;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -18,27 +18,74 @@ import java.util.stream.Collectors;
 public class TestServiceImpl implements TestService {
     private static final BigDecimal TIME_OUT = BigDecimal.valueOf(2);
 
+    private AnaliseResultTable traceResultSell;
+    private AnaliseResultTable deltaResultSell;
+    private AnaliseResultTable boolResultSell;
+    private AnaliseResultTable traceResultBuy;
+    private AnaliseResultTable deltaResultBuy;
+    private AnaliseResultTable boolResultBuy;
+
     private List<DealEntity> dealList;
-    private Map<String, DealEntity> dealMap;
     private final DealService dealService;
     private final DataChartService dataChartService;
     private final EventEntity testEvent;
+    private final AnaliseService analiseService;
+
+    private int k = 0;
 
     TestServiceImpl(DealService dealService,
                     DataChartService dataChartService,
-                    EventService eventService)
+                    EventService eventService,
+                    AnaliseService analiseService)
     {
         this.dealService = dealService;
         this.dataChartService = dataChartService;
+        this.analiseService = analiseService;
         this.testEvent = eventService.findByCode("TEST");
     }
 
     @Override
     public void init() {
-        dealList = dealService.findAllByEvent(this.testEvent);
-        dealMap = dealList
-                .stream()
-                .collect(Collectors.toMap(k -> k.getUno() + k.getType(), v -> v, (a, b) -> a));
+        traceResultSell = new AnaliseResultTable();
+        deltaResultSell = new AnaliseResultTable();
+        boolResultSell = new AnaliseResultTable();
+        traceResultBuy = new AnaliseResultTable();
+        deltaResultBuy = new AnaliseResultTable();
+        boolResultBuy = new AnaliseResultTable();
+
+        dealList = new ArrayList<>();
+    }
+
+    @Override
+    public void saveResult() throws IOException {
+        sortData(traceResultSell);
+        sortData(boolResultSell);
+        sortData(deltaResultSell);
+
+        sortData(traceResultBuy);
+        sortData(boolResultBuy);
+        sortData(deltaResultBuy);
+
+        analiseService.save(traceResultSell, "Result/RESULT_SELL_TRACE.csv");
+        analiseService.save(boolResultSell, "Result/RESULT_SELL_BOOL.csv");
+        analiseService.save(deltaResultSell, "Result/RESULT_SELL_DELTA.csv");
+
+        analiseService.save(traceResultBuy, "Result/RESULT_BUY_TRACE.csv");
+        analiseService.save(boolResultBuy, "Result/RESULT_BUY_BOOL.csv");
+        analiseService.save(deltaResultBuy, "Result/RESULT_BUY_DELTA.csv");
+
+        Integer count = 5000;
+        Integer step = 1000;
+
+        analiseService.saveCorrelations(traceResultSell, "Result/CORR_SELL_TRACE.csv", count, step);
+        analiseService.saveCorrelations(boolResultSell, "Result/CORR_SELL_BOOL.csv", count, step);
+        analiseService.saveCorrelations(deltaResultSell, "Result/CORR_SELL_DELTA.csv", count, step);
+
+        analiseService.saveCorrelations(traceResultBuy, "Result/CORR_BUY_TRACE.csv", count, step);
+        analiseService.saveCorrelations(boolResultBuy, "Result/CORR_BUY_BOOL.csv", count, step);
+        analiseService.saveCorrelations(deltaResultBuy, "Result/CORR_BUY_DELTA.csv", count, step);
+
+        System.out.println("Result Saved k = " + k + " size " + dealList.size() + " all " + dataChartService.getCache().getAllHistory().size());
     }
 
     @Override
@@ -49,17 +96,6 @@ public class TestServiceImpl implements TestService {
 
         dataChartService.startTrace();
 
-
-        System.out.println(
-                "AAA threadId: " + Thread.currentThread().getId()
-                        + " DATE: " + new Date()
-                        + " UNO: " + data.getHistory().getUno()
-                        + " PRICE: " + data.getHistory().getPrice()
-                        + " SIZE: " + dealList.size()
-        );
-
-
-        String checkCode = getCheckCode(data, testEvent);
         getDealList(DealStatusType.PREPARE)
                 .forEach(it -> setPrice(it, data.getHistory()));
         dealList.addAll(getDealList(DealStatusType.OPEN)
@@ -68,34 +104,121 @@ public class TestServiceImpl implements TestService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList()));
 
+        dealList
+                .stream()
+                .filter(it ->
+                        it.getStatus() == DealStatusType.CLOSED &&
+                                (
+                                        it.getType() == EventType.BUY ||
+                                                it.getType() == EventType.SELL
+                                )
+                )
+                .sorted(Comparator.comparing(DealEntity::getUno))
+                .forEach(it -> {
+                    if (it.getType() == EventType.SELL) {
+                        setTraceResult(it, traceResultSell);
+                        setBoolResult(it, boolResultSell);
+                        setDeltaResult(it, deltaResultSell);
+                    } else {
+                        setTraceResult(it, traceResultBuy);
+                        setBoolResult(it, boolResultBuy);
+                        setDeltaResult(it, deltaResultBuy);
+                    }
+                });
+
         dealList = dealList
                 .stream()
                 .filter(it -> it.getStatus() != DealStatusType.CLOSED)
                 .collect(Collectors.toList());
 
-        if (!dealMap.containsKey(data.getHistory().getUno() + EventType.BUY)) {
-            dealList.add(dealService.newDeal(
-                    data,
-                    testEvent,
-                    EventType.BUY,
-                    null,
-                    10d,
-                    checkCode,
-                    null
-            ));
-        }
-        if (!dealMap.containsKey(data.getHistory().getUno() + EventType.SELL)) {
-            dealList.add(dealService.newDeal(
-                    data,
-                    testEvent,
-                    EventType.SELL,
-                    null,
-                    10d,
-                    checkCode,
-                    null
-            ));
-        }
+        List<BigDecimal> boolTriggerValues = getCheckValues(data, testEvent);
+        List<BigDecimal> deltaTriggerValues = getDeltaValues(data, testEvent);
+
+        DealEntity deal = dealService.newDeal(
+                data,
+                testEvent,
+                EventType.BUY,
+                null,
+                10d,
+                "",
+                null
+        );
+        deal.setBoolTriggerValues(boolTriggerValues);
+        deal.setDeltaTriggerValues(deltaTriggerValues);
+        dealList.add(deal);
+
+        deal = dealService.newDeal(
+                data,
+                testEvent,
+                EventType.SELL,
+                null,
+                10d,
+                "",
+                null
+        );
+        deal.setBoolTriggerValues(boolTriggerValues);
+        deal.setDeltaTriggerValues(deltaTriggerValues);
+        dealList.add(deal);
+
+        k = k + 2;
+
         dataChartService.stopTrace();
+    }
+
+    private void sortData(AnaliseResultTable table) {
+        table.setData(
+                table.getData()
+                        .stream()
+                        .sorted(Comparator.comparing(AnaliseResultRow::getUno))
+                        .collect(Collectors.toList())
+        );
+    }
+
+    private void setBoolResult(DealEntity deal, AnaliseResultTable analiseResultTable) {
+        if (analiseResultTable.getHeaders() == null) {
+            analiseResultTable.setHeaders(getCheckHeaders(testEvent));
+        }
+        analiseResultTable.getData().add(
+                new AnaliseResultRow(
+                        deal.getUno(),
+                        deal.getResult().compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO,
+                        deal.getBoolTriggerValues()
+                )
+        );
+    }
+
+    private void setDeltaResult(DealEntity deal, AnaliseResultTable analiseResultTable) {
+        if (analiseResultTable.getHeaders() == null) {
+            analiseResultTable.setHeaders(getDeltaHeaders(testEvent));
+        }
+        analiseResultTable.getData().add(
+                new AnaliseResultRow(
+                        deal.getUno(),
+                        deal.getResult(),
+                        deal.getDeltaTriggerValues()
+                )
+        );
+    }
+
+    private void setTraceResult(DealEntity deal, AnaliseResultTable analiseResultTable) {
+        if (analiseResultTable.getHeaders() == null) {
+            analiseResultTable.setHeaders(
+                    deal.getTraceValues()
+                            .stream()
+                            .map(TraceValueEntity::getCode)
+                            .collect(Collectors.toList())
+            );
+        }
+        analiseResultTable.getData().add(
+                new AnaliseResultRow(
+                        deal.getUno(),
+                        deal.getResult(),
+                        deal.getTraceValues()
+                                .stream()
+                                .map(TraceValueEntity::getValue)
+                                .collect(Collectors.toList())
+                )
+        );
     }
 
     private List<DealEntity> getDealList(DealStatusType dealStatusType) {
@@ -147,13 +270,47 @@ public class TestServiceImpl implements TestService {
                 .orElse(null);
     }
 
-    private String getCheckCode(DataChart data, EventEntity event) {
+    private List<BigDecimal> getCheckValues(DataChart data, EventEntity event) {
         return event.getTriggers()
                 .stream()
                 .sorted(Comparator.comparingInt(EventTriggerEntity::getOrder))
-                .map(it -> dataChartService.getBool(data, it.getTrigger().getCondition()) ? "1" : "0")
-                .reduce(String::concat)
-                .orElse("");
+                .map(it -> dataChartService.getExpValue(data, it.getTrigger().getCondition()))
+                .collect(Collectors.toList());
+    }
+
+    private List<String> getCheckHeaders(EventEntity event) {
+        return event.getTriggers()
+                .stream()
+                .sorted(Comparator.comparingInt(EventTriggerEntity::getOrder))
+                .map(EventTriggerEntity::getTrigger)
+                .map(TriggerEntity::getCondition)
+                .collect(Collectors.toList());
+    }
+
+    private List<BigDecimal> getDeltaValues(DataChart data, EventEntity event) {
+        return event.getTriggers()
+                .stream()
+                .sorted(Comparator.comparingInt(EventTriggerEntity::getOrder))
+                .map(it -> getDeltaValue(data, it.getTrigger().getCondition()))
+                .collect(Collectors.toList());
+    }
+
+    private List<String> getDeltaHeaders(EventEntity event) {
+        return event.getTriggers()
+                .stream()
+                .sorted(Comparator.comparingInt(EventTriggerEntity::getOrder))
+                .map(EventTriggerEntity::getTrigger)
+                .map(TriggerEntity::getCondition)
+                .map(it -> dataChartService.normalizeExpression(it).replaceAll("[<>=]+", "-"))
+                .collect(Collectors.toList());
+    }
+
+    private BigDecimal getDeltaValue(DataChart data, String boolExpression) {
+        return dataChartService.getExpValue(
+                data,
+                dataChartService.normalizeExpression(boolExpression)
+                        .replaceAll("[<>=]+", "-")
+        );
     }
 }
 

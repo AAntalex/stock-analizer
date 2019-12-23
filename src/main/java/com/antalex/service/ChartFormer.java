@@ -2,6 +2,7 @@ package com.antalex.service;
 
 import com.antalex.dto.DataChartDto;
 import com.antalex.dto.VolumeDto;
+import com.antalex.holders.DataChartHolder;
 import com.antalex.holders.DataHolder;
 import com.antalex.holders.DateFormatHolder;
 import com.antalex.mapper.DtoMapper;
@@ -124,8 +125,9 @@ public class ChartFormer {
             }
             dataChartService.getCache().setLastData(dataChart);
         }
-//        testService.test(dataChart);
-
+        if (Optional.ofNullable(DataChartHolder.isTest()).orElse(false)) {
+            testService.test(dataChart);
+        }
     }
 
     public synchronized void add(AllHistory history) {

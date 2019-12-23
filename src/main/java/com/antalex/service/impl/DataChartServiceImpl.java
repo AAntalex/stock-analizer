@@ -38,6 +38,7 @@ public class DataChartServiceImpl implements DataChartService {
     private static final String OFFER_LOW = "OFFER_LOW";
     private static final String TREND = "TREND";
     private static final String ALPHA = "ALPHA";
+    private static final String PREV = "_PREV";
     private CacheDadaChart cache;
     private Boolean trace = false;
 
@@ -95,6 +96,9 @@ public class DataChartServiceImpl implements DataChartService {
     }
 
     private BigDecimal calcValue(DataChart data, String variable) {
+        if (data == null) {
+            return null;
+        }
         variable = variable.toUpperCase();
         switch (variable) {
             case VOL: {
@@ -196,6 +200,14 @@ public class DataChartServiceImpl implements DataChartService {
                 if (variable.startsWith(TREND)) {
                     return getTrendValue(data, variable);
                 }
+                if (variable.endsWith(PREV)) {
+                    return calcValue(
+                            data.getCalcIndicator()
+                                    ? data.getPrev()
+                                    : Optional.ofNullable(data.getPrev()).map(DataChart::getPrev).orElse(null) ,
+                            variable.substring(0, variable.length() - 5)
+                    );
+                }
                 return null;
             }
         }
@@ -222,22 +234,29 @@ public class DataChartServiceImpl implements DataChartService {
     }
 
     @Override
-    public Boolean getBool(DataChart data, String boolExpression) {
-        Expression expression = new Expression(
-                String.format("IF(%s,1,0)",
-                        boolExpression
-                                .replace(String.valueOf(" "), "")
-                                .replace("->", "_"))
-        );
+    public BigDecimal getExpValue(DataChart data, String expressionString) {
+        Expression expression = new Expression(normalizeExpression(expressionString));
         expression.setPrecision(DataHolder.PRECISION).setRoundingMode(RoundingMode.HALF_UP);
         for (String variable : expression.getUsedVariables()) {
             BigDecimal value = getValue(data, variable);
             if (value == null) {
-                return false;
+                return null;
             }
             expression.and(variable, value);
         }
-        return expression.eval().compareTo(BigDecimal.ZERO) > 0;
+        return expression.eval();
+    }
+
+    @Override
+    public Boolean getBool(DataChart data, String boolExpression) {
+        return getExpValue(data, boolExpression).compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    @Override
+    public String normalizeExpression(String expression) {
+        return expression
+                .replace(String.valueOf(" "), "")
+                .replace("->", "_");
     }
 
     @Override
@@ -279,6 +298,9 @@ public class DataChartServiceImpl implements DataChartService {
             throw new IllegalStateException("Incorrect format of variable TREND");
         }
         Trend trend = getTrend(period, offset);
+        if (trend == null) {
+            return null;
+        }
         if (isAlpha) {
             return isHigh ? trend.getHigh().getAlpha() : trend.getLow().getAlpha();
         }

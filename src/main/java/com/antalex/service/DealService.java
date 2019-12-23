@@ -18,8 +18,11 @@ public interface DealService {
                        String caption,
                        DealEntity main);
     DealEntity save(DealEntity entity);
+    void startBatch(Integer batchSize);
+    void stopBatch();
     DealEntity procLimit(DealEntity deal, DataChart data, Boolean batch);
     void setPrice(DealEntity deal, BigDecimal price);
     List<DealEntity> findAllByStatus(DealStatusType status);
     List<DealEntity> findAllByEvent(EventEntity event);
+    List<DealEntity> getProcessedDeals(EventEntity event, DealStatusType status, EventType type);
 }

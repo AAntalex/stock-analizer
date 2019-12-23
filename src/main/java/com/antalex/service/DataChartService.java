@@ -14,9 +14,11 @@ public interface DataChartService {
     void dropCache();
     BigDecimal getValue(DataChart data, String variable);
     Boolean getBool(DataChart data, String boolExpression);
+    BigDecimal getExpValue(DataChart data, String boolExpression);
     List<IndicatorValueEntity> getIndicatorValues(DataChart data);
     void startTrace();
     void stopTrace();
     List<TraceValueEntity> getTraceValues();
     Trend getTrend(Integer period, Integer offset);
+    String normalizeExpression(String expression);
 }

@@ -214,7 +214,7 @@ public class IndicatorServiceImpl implements IndicatorService {
     }
 
     private IndicatorExpression getIndicatorExpression(IndicatorEntity indicatorEntity) {
-        String expressionText = normalizeExpression(indicatorEntity.getExpression());
+        String expressionText = dataChartService.normalizeExpression(indicatorEntity.getExpression());
 
         List<String> functions = new ArrayList<>();
         List<String> iterableFunctions = new ArrayList<>();
@@ -292,10 +292,11 @@ public class IndicatorServiceImpl implements IndicatorService {
 
     private BigDecimal getVariableValue(String variable, Integer index) {
         DataChart data = DataHolder.data(index);
+        variable = variable.toUpperCase();
         if (data == null) {
             return BigDecimal.ZERO;
         }
-        switch (variable.toUpperCase()) {
+        switch (variable) {
             case PERIOD: {
                 return DataHolder.period();
             }
@@ -303,6 +304,16 @@ public class IndicatorServiceImpl implements IndicatorService {
                 return new BigDecimal(index);
             }
             default: {
+                if (
+                        variable.startsWith(TREND) &&
+                                DataHolder.period().compareTo(BigDecimal.ZERO) > 0)
+                {
+                    variable =
+                            variable.replace(
+                                    TREND + '_',
+                                    TREND + DataHolder.period().intValue() + '_'
+                            );
+                }
                 BigDecimal value = dataChartService.getValue(data, variable);
                 if (value != null) {
                     return value;
@@ -432,11 +443,5 @@ public class IndicatorServiceImpl implements IndicatorService {
                 return RESULT;
             }
         };
-    }
-
-    private String normalizeExpression(String expression) {
-        return expression
-                .replace(String.valueOf(" "), "")
-                .replace("->", "_");
     }
 }
