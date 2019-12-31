@@ -7,6 +7,7 @@ import com.antalex.model.enums.DealStatusType;
 import com.antalex.model.enums.EventType;
 import com.antalex.persistence.entity.*;
 import com.antalex.service.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -14,9 +15,10 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class TestServiceImpl implements TestService {
-    private static final BigDecimal TIME_OUT = BigDecimal.valueOf(2);
+    private static final BigDecimal TIME_OUT = BigDecimal.valueOf(1);
 
     private AnaliseResultTable traceResultSell;
     private AnaliseResultTable deltaResultSell;
@@ -32,6 +34,7 @@ public class TestServiceImpl implements TestService {
     private final AnaliseService analiseService;
 
     private int k = 0;
+    Calendar calendar;
 
     TestServiceImpl(DealService dealService,
                     DataChartService dataChartService,
@@ -58,14 +61,6 @@ public class TestServiceImpl implements TestService {
 
     @Override
     public void saveResult() throws IOException {
-        sortData(traceResultSell);
-        sortData(boolResultSell);
-        sortData(deltaResultSell);
-
-        sortData(traceResultBuy);
-        sortData(boolResultBuy);
-        sortData(deltaResultBuy);
-
         analiseService.save(traceResultSell, "Result/RESULT_SELL_TRACE.csv");
         analiseService.save(boolResultSell, "Result/RESULT_SELL_BOOL.csv");
         analiseService.save(deltaResultSell, "Result/RESULT_SELL_DELTA.csv");
@@ -74,24 +69,35 @@ public class TestServiceImpl implements TestService {
         analiseService.save(boolResultBuy, "Result/RESULT_BUY_BOOL.csv");
         analiseService.save(deltaResultBuy, "Result/RESULT_BUY_DELTA.csv");
 
-        Integer count = 5000;
-        Integer step = 1000;
+        Integer steps = 20;
 
-        analiseService.saveCorrelations(traceResultSell, "Result/CORR_SELL_TRACE.csv", count, step);
-        analiseService.saveCorrelations(boolResultSell, "Result/CORR_SELL_BOOL.csv", count, step);
-        analiseService.saveCorrelations(deltaResultSell, "Result/CORR_SELL_DELTA.csv", count, step);
+        analiseService.saveCorrelations(traceResultSell, "Result/CORR_SELL_TRACE.csv", steps);
+        analiseService.saveCorrelations(boolResultSell, "Result/CORR_SELL_BOOL.csv", steps);
+        analiseService.saveCorrelations(deltaResultSell, "Result/CORR_SELL_DELTA.csv", steps);
 
-        analiseService.saveCorrelations(traceResultBuy, "Result/CORR_BUY_TRACE.csv", count, step);
-        analiseService.saveCorrelations(boolResultBuy, "Result/CORR_BUY_BOOL.csv", count, step);
-        analiseService.saveCorrelations(deltaResultBuy, "Result/CORR_BUY_DELTA.csv", count, step);
+        analiseService.saveCorrelations(traceResultBuy, "Result/CORR_BUY_TRACE.csv", steps);
+        analiseService.saveCorrelations(boolResultBuy, "Result/CORR_BUY_BOOL.csv", steps);
+        analiseService.saveCorrelations(deltaResultBuy, "Result/CORR_BUY_DELTA.csv", steps);
 
-        System.out.println("Result Saved k = " + k + " size " + dealList.size() + " all " + dataChartService.getCache().getAllHistory().size());
+        log.info("Result Saved k = " + k + " size " + dealList.size() + " all " + dataChartService.getCache().getAllHistory().size());
     }
 
     @Override
     public void test(DataChart data) {
-        if (dataChartService.getCache().getDataList().size() < 50) {
+        Integer count = dataChartService.getCache().getDataList().size();
+        if (count < 50) {
             return;
+        }
+
+        if (this.calendar == null) {
+            this.calendar = Calendar.getInstance();
+            this.calendar.setTime(data.getDate());
+            this.calendar.add(Calendar.HOUR, 1);
+        }
+        if (data.getDate().compareTo(this.calendar.getTime()) >= 0) {
+            log.info(String.format("Process %d records. Time (%s)", count, data.getDate()));
+            this.calendar.setTime(data.getDate());
+            this.calendar.add(Calendar.HOUR, 1);
         }
 
         dataChartService.startTrace();
@@ -163,15 +169,6 @@ public class TestServiceImpl implements TestService {
         k = k + 2;
 
         dataChartService.stopTrace();
-    }
-
-    private void sortData(AnaliseResultTable table) {
-        table.setData(
-                table.getData()
-                        .stream()
-                        .sorted(Comparator.comparing(AnaliseResultRow::getUno))
-                        .collect(Collectors.toList())
-        );
     }
 
     private void setBoolResult(DealEntity deal, AnaliseResultTable analiseResultTable) {

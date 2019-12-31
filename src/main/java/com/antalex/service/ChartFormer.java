@@ -38,7 +38,7 @@ public class ChartFormer {
         this.testService = testService;
     }
 
-    public void setApproximation(int approximation) {
+    public void setApproximation(Integer approximation) {
         DateFormatHolder.setApproximation(approximation);
     }
 
@@ -130,7 +130,7 @@ public class ChartFormer {
         }
     }
 
-    public synchronized void add(AllHistory history) {
+    public void add(AllHistory history) {
         String uno = history.getUno();
         Map<String, AllHistory> allHistory = dataChartService.getCache().getAllHistory();
         if (checkTime(uno) && !allHistory.containsKey(uno)) {
