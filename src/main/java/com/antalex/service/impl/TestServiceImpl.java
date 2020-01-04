@@ -72,11 +72,11 @@ public class TestServiceImpl implements TestService {
         Integer steps = 20;
 
         analiseService.saveCorrelations(traceResultSell, "Result/CORR_SELL_TRACE.csv", steps);
-        analiseService.saveCorrelations(boolResultSell, "Result/CORR_SELL_BOOL.csv", steps);
+        analiseService.saveCorrelations(boolResultSell, "Result/CORR_SELL_BOOL.csv", 1);
         analiseService.saveCorrelations(deltaResultSell, "Result/CORR_SELL_DELTA.csv", steps);
 
         analiseService.saveCorrelations(traceResultBuy, "Result/CORR_BUY_TRACE.csv", steps);
-        analiseService.saveCorrelations(boolResultBuy, "Result/CORR_BUY_BOOL.csv", steps);
+        analiseService.saveCorrelations(boolResultBuy, "Result/CORR_BUY_BOOL.csv", 1);
         analiseService.saveCorrelations(deltaResultBuy, "Result/CORR_BUY_DELTA.csv", steps);
 
         log.info("Result Saved k = " + k + " size " + dealList.size() + " all " + dataChartService.getCache().getAllHistory().size());
@@ -85,7 +85,7 @@ public class TestServiceImpl implements TestService {
     @Override
     public void test(DataChart data) {
         Integer count = dataChartService.getCache().getDataList().size();
-        if (count < 50) {
+        if (count < 120) {
             return;
         }
 
@@ -122,13 +122,13 @@ public class TestServiceImpl implements TestService {
                 .sorted(Comparator.comparing(DealEntity::getUno))
                 .forEach(it -> {
                     if (it.getType() == EventType.SELL) {
-                        setTraceResult(it, traceResultSell);
                         setBoolResult(it, boolResultSell);
                         setDeltaResult(it, deltaResultSell);
+                        setTraceResult(it, traceResultSell);
                     } else {
-                        setTraceResult(it, traceResultBuy);
                         setBoolResult(it, boolResultBuy);
                         setDeltaResult(it, deltaResultBuy);
+                        setTraceResult(it, traceResultBuy);
                     }
                 });
 

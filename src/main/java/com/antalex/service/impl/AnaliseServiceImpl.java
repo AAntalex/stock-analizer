@@ -5,7 +5,6 @@ import com.antalex.model.AnaliseResultRow;
 import com.antalex.model.AnaliseResultTable;
 import com.antalex.model.CorrelationValue;
 import com.antalex.service.AnaliseService;
-import javafx.util.Pair;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -89,19 +88,19 @@ public class AnaliseServiceImpl implements AnaliseService {
         fileWriter.close();
     }
 
-    private CorrelationValue getCorrelationByIdx(List<AnaliseResultRow> data, List<BigDecimal> resultSeries, Integer idx) {
+    private CorrelationValue getCorrelationByIdx(List<AnaliseResultRow> data, Integer idx) {
         CorrelationValue resultCorr = new CorrelationValue();
         List<BigDecimal> dataSeries = new ArrayList<>();
-        Boolean setResultSeries = resultSeries.isEmpty();
+        List<BigDecimal> resultSeries = new ArrayList<>();
         data.forEach(it -> {
             BigDecimal value = it.getFactors().get(idx);
-            if (setResultSeries) {
+            if (Objects.nonNull(value)) {
                 resultSeries.add(it.getResult());
+                dataSeries.add(value);
+                resultCorr.setMax(Optional.ofNullable(resultCorr.getMax()).orElse(value).max(value));
+                resultCorr.setMin(Optional.ofNullable(resultCorr.getMin()).orElse(value).min(value));
+                resultCorr.setResult(Optional.ofNullable(resultCorr.getResult()).orElse(BigDecimal.ZERO).add(it.getResult()));
             }
-            dataSeries.add(it.getFactors().get(idx));
-            resultCorr.setMax(Optional.ofNullable(resultCorr.getMax()).orElse(value).max(value));
-            resultCorr.setMin(Optional.ofNullable(resultCorr.getMin()).orElse(value).min(value));
-            resultCorr.setResult(Optional.ofNullable(resultCorr.getResult()).orElse(BigDecimal.ZERO).add(it.getResult()));
         });
 
         resultCorr.setValue(
@@ -110,7 +109,7 @@ public class AnaliseServiceImpl implements AnaliseService {
                         resultSeries
                 )
         );
-        resultCorr.setSize(data.size());
+        resultCorr.setSize(dataSeries.size());
 
         return resultCorr;
     }
@@ -122,14 +121,13 @@ public class AnaliseServiceImpl implements AnaliseService {
         }
 
         List<List<CorrelationValue>> result = new ArrayList<>();
-        List<BigDecimal> resultSeries = new ArrayList<>();
         List<CorrelationValue> mainRow = IntStream
                 .range(0, table.getHeaders().size())
-                .mapToObj(idx -> getCorrelationByIdx(table.getData(), resultSeries, idx))
+                .mapToObj(idx -> getCorrelationByIdx(table.getData(), idx))
                 .collect(Collectors.toList());
         result.add(mainRow);
 
-        if (steps == 1) {
+        if (steps <= 1) {
             return result;
         }
 
@@ -168,10 +166,10 @@ public class AnaliseServiceImpl implements AnaliseService {
                                                             .stream()
                                                             .filter(
                                                                     it ->
-                                                                            it.getFactors().get(idx).compareTo(min) >= 0 &&
+                                                                            Objects.nonNull(it.getFactors().get(idx)) &&
+                                                                                    it.getFactors().get(idx).compareTo(min) >= 0 &&
                                                                                     it.getFactors().get(idx).compareTo(max) <= 0
                                                             ).collect(Collectors.toList()),
-                                                    new ArrayList<>(),
                                                     idx
                                             );
                                         })

@@ -11,12 +11,14 @@ import com.antalex.service.IndicatorService;
 import com.antalex.service.TrendService;
 import com.udojava.evalex.*;
 import com.udojava.evalex.Expression.LazyNumber;
+import javafx.util.Pair;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Component
@@ -30,6 +32,8 @@ public class IndicatorServiceImpl implements IndicatorService {
     private static final String HIGH = "HIGH";
     private static final String LOW = "LOW";
     private static final String TREND = "TREND";
+    private static final String TARGET_BID = "TARGET_BID";
+    private static final String TARGET_OFFER = "TARGET_OFFER";
 
     private static final Map<String, IndicatorExpression> INDICATORS = new HashMap<>();
 
@@ -184,16 +188,20 @@ public class IndicatorServiceImpl implements IndicatorService {
                                     .type(IndicatorType.TECHNICAL)
                                     .build()
                     );
-            data.getIndicators().put(indicatorCode,
-                    Indicator.builder()
-                            .value(value)
-                            .code(indicatorCode)
-                            .description(indicatorEntity.getDescription())
-                            .type(indicatorEntity.getType())
-                            .period(DataHolder.period().intValue())
-                            .name(indicatorEntity.getCode())
-                            .build()
-            );
+            Optional.ofNullable(data)
+                    .map(DataChart::getIndicators)
+                    .ifPresent(it ->
+                            it.put(indicatorCode,
+                                    Indicator.builder()
+                                            .value(value)
+                                            .code(indicatorCode)
+                                            .description(indicatorEntity.getDescription())
+                                            .type(indicatorEntity.getType())
+                                            .period(DataHolder.period().intValue())
+                                            .name(indicatorEntity.getCode())
+                                            .build()
+                            )
+                    );
         }
     }
 
@@ -219,6 +227,7 @@ public class IndicatorServiceImpl implements IndicatorService {
         List<String> functions = new ArrayList<>();
         List<String> iterableFunctions = new ArrayList<>();
         List<String> expressionFunctions = new ArrayList<>();
+        List<String> targetFunctions = new ArrayList<>();
         int pos = 0;
         int len = expressionText.length();
         List<String> variableList = getAllVariables(expressionText);
@@ -240,6 +249,10 @@ public class IndicatorServiceImpl implements IndicatorService {
                     }
                     if (PERIOD.equals(variableList.get(i+1).toUpperCase())) {
                         functions.add(variable);
+                        funcExpression = false;
+                    }
+                    if (TARGET_BID.equals(variable) || TARGET_OFFER.equals(variable)) {
+                        targetFunctions.add(variable);
                         funcExpression = false;
                     }
                     if (funcExpression &&
@@ -266,6 +279,11 @@ public class IndicatorServiceImpl implements IndicatorService {
                 .stream()
                 .distinct()
                 .map(it -> createFunctionForIndicator(it, true))
+                .forEach(expression::addFunction);
+        targetFunctions
+                .stream()
+                .distinct()
+                .map(this::createFunctionForTarget)
                 .forEach(expression::addFunction);
         expressionFunctions
                 .stream()
@@ -352,6 +370,15 @@ public class IndicatorServiceImpl implements IndicatorService {
             @Override
             public BigDecimal eval(List<BigDecimal> parameters) {
                 return evaluate(iterable ? function.substring(0, function.length() - 2) : function, parameters.get(0).intValue(), iterable);
+            }
+        };
+    }
+
+    private Function createFunctionForTarget(String function) {
+        return new AbstractFunction(function, 1) {
+            @Override
+            public BigDecimal eval(List<BigDecimal> parameters) {
+                return getTargetPrice(DataHolder.data(), parameters.get(0), TARGET_BID.equals(function));
             }
         };
     }
@@ -443,5 +470,34 @@ public class IndicatorServiceImpl implements IndicatorService {
                 return RESULT;
             }
         };
+    }
+
+    private BigDecimal getTargetPrice(DataChart data, BigDecimal vol, Boolean bidFlag) {
+        List<Pair<BigDecimal, Candlestick>> quotes;
+        BigDecimal result = null;
+        if (bidFlag) {
+            quotes =
+                    data.getQuotes()
+                            .entrySet()
+                            .stream()
+                            .filter(it -> Objects.nonNull(it.getValue().getOffer()))
+                            .sorted(Map.Entry.comparingByKey())
+                            .map(it -> new Pair<>(it.getKey(), it.getValue().getOffer().getCandle()))
+                            .collect(Collectors.toList());
+        } else {
+            quotes =
+                    data.getQuotes()
+                            .entrySet()
+                            .stream()
+                            .filter(it -> Objects.nonNull(it.getValue().getBid()))
+                            .sorted(Map.Entry.comparingByKey(Comparator.reverseOrder()))
+                            .map(it -> new Pair<>(it.getKey(), it.getValue().getBid().getCandle()))
+                            .collect(Collectors.toList());
+        }
+        for (int i = 0; i < quotes.size() && vol.compareTo(BigDecimal.ZERO) > 0; i++) {
+            vol = vol.subtract(quotes.get(i).getValue().getClose());
+            result = quotes.get(i).getKey();
+        }
+        return result;
     }
 }
