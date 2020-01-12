@@ -36,7 +36,7 @@ public class DealServiceImpl implements DealService {
         if (entity == null) {
             return null;
         }
-        if (Optional.ofNullable(DataChartHolder.isTest()).orElse(false)) {
+        if (Optional.ofNullable(DataChartHolder.isCalcCorr()).orElse(false)) {
             return entity;
         }
 /*
@@ -89,8 +89,13 @@ public class DealServiceImpl implements DealService {
     }
 
     @Override
-    public List<DealEntity> findAllByEvent(EventEntity event) {
-        return dealRepository.findAllByEvent(event);
+    public List<DealEntity> findAllByEventAndStatus(EventEntity event, DealStatusType status) {
+        return dealRepository.findAllByEventAndStatus(event, status);
+    }
+
+    @Override
+    public List<DealEntity> findAllByEventAndStatusNot(EventEntity event, DealStatusType status) {
+        return dealRepository.findAllByEventAndStatusNot(event, status);
     }
 
     @Override
@@ -123,6 +128,7 @@ public class DealServiceImpl implements DealService {
         deal.setTraceValues(dataChartService.getTraceValues());
         deal.setStopLimit(getStopLimit(deal, data.getData().getCandle().getClose()));
         deal.setTakeProfit(getTakeProfit(deal, data.getData().getCandle().getClose()));
+        addHistory(deal, price, deal.getUno());
         return this.save(deal);
     }
 
@@ -141,6 +147,7 @@ public class DealServiceImpl implements DealService {
                     "",
                     deal);
             deal.setStatus(DealStatusType.DONE);
+            addHistory(deal, price, data.getHistory().getUno());
             save = true;
         }
         if (checkTakeProfit(deal, price)) {
@@ -155,6 +162,7 @@ public class DealServiceImpl implements DealService {
                     "",
                     deal);
             deal.setStatus(DealStatusType.DONE);
+            addHistory(deal, price, data.getHistory().getUno());
             save = true;
         }
         if (save) {
@@ -164,7 +172,7 @@ public class DealServiceImpl implements DealService {
     }
 
     @Override
-    public void setPrice(DealEntity deal, BigDecimal price) {
+    public void setPrice(DealEntity deal, BigDecimal price, String uno) {
         if (price != null) {
             deal.setPrice(price);
             BigDecimal sum = getSum(deal);
@@ -175,22 +183,25 @@ public class DealServiceImpl implements DealService {
                             sum
                     )
             );
+            DealEntity mainDeal = null;
             if (deal.getType() == EventType.BUY || deal.getType() == EventType.SELL) {
                 deal.setStatus(DealStatusType.OPEN);
+                mainDeal = deal;
             } else {
                 deal.setStatus(DealStatusType.CLOSED);
-                if (deal.getMain() != null) {
-                    BigDecimal mainSum = getSum(deal.getMain());
-                    deal.getMain().setStatus(DealStatusType.CLOSED);
+                mainDeal = deal.getMain();
+                if (mainDeal != null) {
+                    BigDecimal mainSum = getSum(mainDeal);
+                    mainDeal.setStatus(DealStatusType.CLOSED);
                     BigDecimal income = (
-                            deal.getMain().getType() == EventType.BUY
+                            mainDeal.getType() == EventType.BUY
                                     ? sum.subtract(mainSum)
                                     : mainSum.subtract(sum)
                     )
                             .subtract(
                                     Stream.concat(
                                             deal.getRates().stream(),
-                                            deal.getMain().getRates().stream()
+                                            mainDeal.getRates().stream()
                                     )
                                             .map(RateValueEntity::getValue)
                                             .reduce(BigDecimal.ZERO, BigDecimal::add)
@@ -201,17 +212,47 @@ public class DealServiceImpl implements DealService {
                             RateType.INCOME,
                             income
                     );
-                    deal.getMain().getRates().addAll(incomeRates);
-                    deal.getMain().setResult(income
+                    mainDeal.getRates().addAll(incomeRates);
+                    mainDeal.setResult(income
                             .subtract(
                                     incomeRates.stream()
                                             .map(RateValueEntity::getValue)
                                             .reduce(BigDecimal.ZERO, BigDecimal::add)
                             )
                     );
+
+
+
+
+
                 }
             }
+            if (Objects.nonNull(mainDeal)) {
+                addHistory(mainDeal, price, uno);
+            }
+
             this.save(deal);
+        }
+    }
+
+    private void addHistory(DealEntity deal, BigDecimal price, String uno) {
+        if (Objects.isNull(deal)) {
+            return;
+        }
+        DealHistoryEntity dealHistoryEntity = new DealHistoryEntity();
+        dealHistoryEntity.setPrice(price);
+        dealHistoryEntity.setDate(new Date());
+        dealHistoryEntity.setStatus(deal.getStatus());
+        dealHistoryEntity.setType(getTypeByStatus(deal));
+        dealHistoryEntity.setUno(uno);
+        deal.getHistory().add(dealHistoryEntity);
+    }
+
+    private EventType getTypeByStatus(DealEntity deal) {
+        if (deal.getStatus() == DealStatusType.PREPARE || deal.getStatus() == DealStatusType.OPEN) {
+            return deal.getType();
+        } else {
+            return deal.getType() == EventType.BUY ? EventType.SELL : EventType.BUY;
         }
     }
 

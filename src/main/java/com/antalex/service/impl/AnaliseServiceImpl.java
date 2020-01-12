@@ -35,7 +35,7 @@ public class AnaliseServiceImpl implements AnaliseService {
                                                 .concat(
                                                         row.getFactors()
                                                                 .stream()
-                                                                .map(res -> res + ";")
+                                                                .map(res -> format(res) + ";")
                                                                 .reduce("", String::concat)
                                                 )
                                                 .concat(row.getResult().toString())
@@ -54,7 +54,7 @@ public class AnaliseServiceImpl implements AnaliseService {
         FileWriter fileWriter = new FileWriter(filePath, false);
         fileWriter.write(table.getHeaders()
                 .stream()
-                .map(it -> it.concat(";MIN;MAX;RESULT;SIZE;"))
+                .map(it -> it.concat(";MIN;MAX;RESULT_SUM;SIZE;RESULT"))
                 .reduce(String::concat)
                 .orElse("")
                 .concat("\n")
@@ -70,11 +70,12 @@ public class AnaliseServiceImpl implements AnaliseService {
                                                     .stream()
                                                     .map(
                                                             it ->
-                                                                    it.getValue() + ";" +
-                                                                            it.getMin() + ";" +
-                                                                            it.getMax() + ";" +
-                                                                            it.getResult() + ";" +
-                                                                            it.getSize() + ";"
+                                                                    format(it.getValue()) + ";" +
+                                                                            format(it.getMin()) + ";" +
+                                                                            format(it.getMax()) + ";" +
+                                                                            format(it.getAllResult()) + ";" +
+                                                                            it.getSize() + ";" +
+                                                                            format(it.getResult()) + ";"
                                                     )
                                                     .reduce("", String::concat)
                                                     .concat("\n")
@@ -88,6 +89,10 @@ public class AnaliseServiceImpl implements AnaliseService {
         fileWriter.close();
     }
 
+    private String format(BigDecimal number) {
+        return number.toString().replace(".", ",");
+    }
+
     private CorrelationValue getCorrelationByIdx(List<AnaliseResultRow> data, Integer idx) {
         CorrelationValue resultCorr = new CorrelationValue();
         List<BigDecimal> dataSeries = new ArrayList<>();
@@ -99,7 +104,11 @@ public class AnaliseServiceImpl implements AnaliseService {
                 dataSeries.add(value);
                 resultCorr.setMax(Optional.ofNullable(resultCorr.getMax()).orElse(value).max(value));
                 resultCorr.setMin(Optional.ofNullable(resultCorr.getMin()).orElse(value).min(value));
-                resultCorr.setResult(Optional.ofNullable(resultCorr.getResult()).orElse(BigDecimal.ZERO).add(it.getResult()));
+                resultCorr.setAllResult(
+                        Optional.ofNullable(resultCorr.getAllResult())
+                                .orElse(BigDecimal.ZERO)
+                                .add(it.getResult())
+                );
             }
         });
 
@@ -110,6 +119,12 @@ public class AnaliseServiceImpl implements AnaliseService {
                 )
         );
         resultCorr.setSize(dataSeries.size());
+        if (dataSeries.size() > 0) {
+            resultCorr.setResult(
+                    resultCorr.getAllResult()
+                            .divide(new BigDecimal(dataSeries.size()), DataHolder.PRECISION, RoundingMode.HALF_UP)
+            );
+        }
 
         return resultCorr;
     }

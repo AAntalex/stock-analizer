@@ -9,10 +9,8 @@ import javafx.util.Pair;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
+import javax.swing.text.html.Option;
+import java.util.*;
 
 @Service
 @AllArgsConstructor
@@ -35,7 +33,6 @@ public class ChartServiceImpl implements ChartService {
                         allHistoryService.query(secClass, interval.getKey(), interval.getValue(), stockClass)
                                 .forEach(chartFormer::add)
                 );
-        allHistoryService.query(secClass, sDateBegin, sDateEnd, stockClass).forEach(chartFormer::add);
         return chartFormer.getDataList(sDateBegin, sDateEnd);
     }
 
@@ -49,7 +46,7 @@ public class ChartServiceImpl implements ChartService {
         Date dateEnd = DateFormatHolder.getDateFromString(sDateEnd, 0);
         calendar.setTime(dateBegin);
         Date nextDate = getNextDate(calendar, dateEnd);
-        while (dateBegin.compareTo(nextDate) < 0) {
+        while (Objects.nonNull(nextDate) && dateBegin.compareTo(nextDate) < 0) {
             result.add(
                     new Pair<>(
                             DateFormatHolder.getStringFromDate(dateBegin),
@@ -59,6 +56,11 @@ public class ChartServiceImpl implements ChartService {
             dateBegin = nextDate;
             nextDate = getNextDate(calendar, dateEnd);
         }
+        if (Objects.isNull(nextDate)) {
+            result.add(
+                    new Pair<>(DateFormatHolder.getStringFromDate(dateBegin), "")
+            );
+        }
         chartFormer.setApproximation(oldApproximation);
         return result;
     }
@@ -66,7 +68,10 @@ public class ChartServiceImpl implements ChartService {
     private Date getNextDate(Calendar calendar, Date dateEnd) {
         calendar.add(Calendar.DATE, 1);
         Date result = calendar.getTime();
-        if (dateEnd.compareTo(result) < 0) {
+        if (Optional.ofNullable(dateEnd)
+                .orElse(new Date())
+                .compareTo(result) < 0)
+        {
             return dateEnd;
         }
         return result;

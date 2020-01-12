@@ -18,4 +18,12 @@ public class DataChartHolder {
         RequestContextHolder.getRequestAttributes().setAttribute("test", test, SCOPE_REQUEST);
     }
 
+    public static Boolean isCalcCorr() {
+        return (Boolean) RequestContextHolder.getRequestAttributes()
+                .getAttribute("calcCorr", SCOPE_REQUEST);
+    }
+
+    public static void setCalcCorr(Boolean test) {
+        RequestContextHolder.getRequestAttributes().setAttribute("calcCorr", test, SCOPE_REQUEST);
+    }
 }

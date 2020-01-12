@@ -21,8 +21,13 @@ public interface DealService {
     void startBatch(Integer batchSize);
     void stopBatch();
     DealEntity procLimit(DealEntity deal, DataChart data, Boolean batch);
-    void setPrice(DealEntity deal, BigDecimal price);
+    void setPrice(DealEntity deal, BigDecimal price, String uno);
     List<DealEntity> findAllByStatus(DealStatusType status);
-    List<DealEntity> findAllByEvent(EventEntity event);
+    List<DealEntity> findAllByEventAndStatus(EventEntity event, DealStatusType status);
+    List<DealEntity> findAllByEventAndStatusNot(EventEntity event, DealStatusType status);
     List<DealEntity> getProcessedDeals(EventEntity event, DealStatusType status, EventType type);
+
+    default DealEntity procLimit(DealEntity deal, DataChart data) {
+        return procLimit(deal, data, false);
+    }
 }

@@ -33,6 +33,13 @@ public class TestController {
         DataChartHolder.setTest(true);
         chartService.init();
         List<DataChartDto>  result = chartService.query(secClass, sDateBegin, sDateEnd, stockClass, interval);
+        log.info("AAA TEST is Done");
+        return result;
+/*
+
+        DataChartHolder.setCalcCorr(true);
+        chartService.init();
+        List<DataChartDto>  result = chartService.query(secClass, sDateBegin, sDateEnd, stockClass, interval);
 
         try {
             testService.saveResult();
@@ -41,5 +48,6 @@ public class TestController {
         }
         
         return result;
+*/
     }
 }

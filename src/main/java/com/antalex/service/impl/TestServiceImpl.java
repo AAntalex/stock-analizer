@@ -32,9 +32,11 @@ public class TestServiceImpl implements TestService {
     private final DataChartService dataChartService;
     private final EventEntity testEvent;
     private final AnaliseService analiseService;
+    private final EventService eventService;
 
     private int k = 0;
     Calendar calendar;
+    BigDecimal totalSum = BigDecimal.valueOf(100000);
 
     TestServiceImpl(DealService dealService,
                     DataChartService dataChartService,
@@ -44,7 +46,8 @@ public class TestServiceImpl implements TestService {
         this.dealService = dealService;
         this.dataChartService = dataChartService;
         this.analiseService = analiseService;
-        this.testEvent = eventService.findByCode("TEST");
+        this.eventService = eventService;
+        this.testEvent = this.eventService.findByCode("TEST");
     }
 
     @Override
@@ -85,25 +88,36 @@ public class TestServiceImpl implements TestService {
     @Override
     public void test(DataChart data) {
         Integer count = dataChartService.getCache().getDataList().size();
-        if (count < 120) {
+        if (count <= 240) {
             return;
         }
 
-        if (this.calendar == null) {
-            this.calendar = Calendar.getInstance();
-            this.calendar.setTime(data.getDate());
-            this.calendar.add(Calendar.HOUR, 1);
+        dataChartService.startTrace();
+
+        eventService.applyAll(data);
+
+        dealService.findAllByStatus(DealStatusType.PREPARE)
+                .forEach(it -> setPrice(it, data.getHistory()));
+
+        dataChartService.stopTrace();
+
+        printLog(data);
+    }
+
+    @Override
+    public void calcCorr(DataChart data) {
+        Integer count = dataChartService.getCache().getDataList().size();
+        if (count <= 120) {
+            return;
         }
-        if (data.getDate().compareTo(this.calendar.getTime()) >= 0) {
-            log.info(String.format("Process %d records. Time (%s)", count, data.getDate()));
-            this.calendar.setTime(data.getDate());
-            this.calendar.add(Calendar.HOUR, 1);
-        }
+
+        printLog(data);
 
         dataChartService.startTrace();
 
         getDealList(DealStatusType.PREPARE)
                 .forEach(it -> setPrice(it, data.getHistory()));
+
         dealList.addAll(getDealList(DealStatusType.OPEN)
                 .stream()
                 .map(it -> dealService.procLimit(it, data, true))
@@ -171,6 +185,23 @@ public class TestServiceImpl implements TestService {
         dataChartService.stopTrace();
     }
 
+    private void printLog(DataChart data) {
+        if (this.calendar == null) {
+            this.calendar = Calendar.getInstance();
+            this.calendar.setTime(data.getDate());
+            this.calendar.add(Calendar.HOUR, 1);
+        }
+        if (data.getDate().compareTo(this.calendar.getTime()) >= 0) {
+            log.info(String.format(
+                    "Process %d records. Time (%s)",
+                    dataChartService.getCache().getDataList().size(),
+                    data.getDate())
+            );
+            this.calendar.setTime(data.getDate());
+            this.calendar.add(Calendar.HOUR, 1);
+        }
+    }
+
     private void setBoolResult(DealEntity deal, AnaliseResultTable analiseResultTable) {
         if (analiseResultTable.getHeaders() == null) {
             analiseResultTable.setHeaders(getCheckHeaders(testEvent));
@@ -231,9 +262,9 @@ public class TestServiceImpl implements TestService {
                         deal.getType() == EventType.STOP_LIMIT) &&
                         deal.getMain().getType() == EventType.BUY)
         {
-            dealService.setPrice(deal, getSellPrice(deal, history));
+            dealService.setPrice(deal, getSellPrice(deal, history), history.getUno());
         } else {
-            dealService.setPrice(deal, getBuyPrice(deal, history));
+            dealService.setPrice(deal, getBuyPrice(deal, history), history.getUno());
         }
     }
 

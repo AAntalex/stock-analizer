@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 
 public interface TestService {
     void test(DataChart data);
+    void calcCorr(DataChart data);
     void saveResult() throws IOException;
     void init();
 }

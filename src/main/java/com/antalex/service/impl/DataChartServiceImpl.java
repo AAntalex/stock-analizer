@@ -7,6 +7,7 @@ import com.antalex.persistence.entity.TraceValueEntity;
 import com.antalex.service.DataChartService;
 import com.antalex.service.TrendService;
 import com.udojava.evalex.Expression;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -14,6 +15,7 @@ import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Component
 public class DataChartServiceImpl implements DataChartService {
     private static final String VOL = "VOL";
@@ -249,7 +251,9 @@ public class DataChartServiceImpl implements DataChartService {
 
     @Override
     public Boolean getBool(DataChart data, String boolExpression) {
-        return getExpValue(data, boolExpression).compareTo(BigDecimal.ZERO) > 0;
+        return Optional.ofNullable(getExpValue(data, boolExpression))
+                .orElse(BigDecimal.ZERO)
+                .compareTo(BigDecimal.ZERO) > 0;
     }
 
     @Override

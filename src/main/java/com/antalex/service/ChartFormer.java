@@ -125,6 +125,9 @@ public class ChartFormer {
             }
             dataChartService.getCache().setLastData(dataChart);
         }
+        if (Optional.ofNullable(DataChartHolder.isCalcCorr()).orElse(false)) {
+            testService.calcCorr(dataChart);
+        }
         if (Optional.ofNullable(DataChartHolder.isTest()).orElse(false)) {
             testService.test(dataChart);
         }
@@ -388,11 +391,11 @@ public class ChartFormer {
         DataHolder.setFirstData(dataChartService.getCache().getFirstData());
 
 
-        setTrend(0, 5);
-        setTrend(30, 5);
-        setTrend(60, 5);
-        setTrend(120, 5);
-
+        setTrend(0, 0);
+        setTrend(30, 0);
+        setTrend(60, 0);
+        setTrend(120, 0);
+        setTrend(240, 0);
 
 
         return getDataList(DateFormatHolder.getDateFromString(sDateBegin), DateFormatHolder.getDateFromString(sDateEnd));

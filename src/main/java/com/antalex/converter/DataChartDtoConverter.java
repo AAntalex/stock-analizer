@@ -5,6 +5,7 @@ import com.antalex.holders.DataHolder;
 import com.antalex.mapper.DtoConverter;
 import com.antalex.mapper.DtoMapper;
 import com.antalex.model.DataChart;
+import com.antalex.model.Indicator;
 import com.antalex.model.enums.IndicatorType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -69,6 +70,7 @@ public class DataChartDtoConverter implements DtoConverter<DataChart, DataChartD
                 .indicators(entity.getIndicators().values()
                         .stream()
                         .filter(it -> it.getType() != IndicatorType.TECHNICAL)
+                        .sorted(Comparator.comparing(Indicator::getCode))
                         .collect(Collectors.toList())
                 )
                 .bidUp(entity.getBidUp())

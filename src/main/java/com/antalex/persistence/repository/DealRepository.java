@@ -10,6 +10,7 @@ import java.util.List;
 
 public interface DealRepository extends CrudRepository<DealEntity, Long> {
     List<DealEntity> findAllByStatus(DealStatusType status);
-    List<DealEntity> findAllByEvent(EventEntity event);
+    List<DealEntity> findAllByEventAndStatus(EventEntity event, DealStatusType status);
+    List<DealEntity> findAllByEventAndStatusNot(EventEntity event, DealStatusType status);
     List<DealEntity> findAllByEventAndStatusAndTypeAndResultIsNotNullOrderByUno(EventEntity event, DealStatusType status, EventType type);
 }
