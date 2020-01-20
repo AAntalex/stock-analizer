@@ -101,11 +101,11 @@ public class DataChartServiceImpl implements DataChartService {
     @Override
     public Boolean checkEvent(DataChart data, EventEntity event) {
         return !Objects.isNull(event) &&
-                (event.getTriggers().isEmpty() ||
-                        event.getTriggers()
-                                .stream()
-                                .allMatch(it -> getBool(data, it.getTrigger().getCondition()))
-                );
+                !event.getTriggers().isEmpty() &&
+                event.getTriggers()
+                        .stream()
+                        .allMatch(it -> getBool(data, it.getTrigger().getCondition()))
+                ;
     }
 
     private BigDecimal calcValue(DataChart data, String variable) {
