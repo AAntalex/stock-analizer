@@ -4,10 +4,10 @@ import com.antalex.dto.DataChartDto;
 import com.antalex.dto.TradeClassesDto;
 import com.antalex.mapper.DtoMapper;
 import com.antalex.model.CacheDadaChart;
-import com.antalex.persistence.entity.Quotes;
+import com.antalex.persistence.entity.QuotesRpt;
 import com.antalex.persistence.repository.TradeClassesRepository;
 import com.antalex.service.ChartService;
-import com.antalex.persistence.entity.AllTrades;
+import com.antalex.persistence.entity.AllTradesRpt;
 import com.antalex.service.DataChartService;
 import com.antalex.service.impl.AllTradesService;
 import com.antalex.service.impl.QuotesService;
@@ -33,7 +33,7 @@ public class StockController {
     private DataChartService dataChartService;
 
     @RequestMapping(method = RequestMethod.GET, path = "/quotes")
-    public List<Quotes> getQuotes (
+    public List<QuotesRpt> getQuotes (
             @RequestParam(value = "secClass") String secClass
             ,   @RequestParam(value = "sDateBegin") String sDateBegin
             ,   @RequestParam(value = "sDateEnd") String sDateEnd
@@ -46,7 +46,7 @@ public class StockController {
     }
 
     @RequestMapping(method = RequestMethod.GET, path = "/allTrades")
-    public List<AllTrades> getAllTrades (
+    public List<AllTradesRpt> getAllTrades (
                 @RequestParam(value = "secClass") String secClass
             ,   @RequestParam(value = "sDateBegin") String sDateBegin
             ,   @RequestParam(value = "sDateEnd") String sDateEnd

@@ -22,4 +22,7 @@ public class TakeProfitTuneEntity {
     private BigDecimal spread;
     @Column(name = "C_CODE")
     private String code;
+    @OneToOne
+    @JoinColumn(name = "C_EVENT")
+    private EventEntity event;
 }

@@ -4,6 +4,7 @@ import com.antalex.model.DataChart;
 import com.antalex.model.enums.DealStatusType;
 import com.antalex.model.enums.EventType;
 import com.antalex.persistence.entity.DealEntity;
+import com.antalex.persistence.entity.DealHistoryRpt;
 import com.antalex.persistence.entity.EventEntity;
 
 import java.math.BigDecimal;
@@ -26,6 +27,7 @@ public interface DealService {
     List<DealEntity> findAllByEventAndStatus(EventEntity event, DealStatusType status);
     List<DealEntity> findAllByEventAndStatusNot(EventEntity event, DealStatusType status);
     List<DealEntity> getProcessedDeals(EventEntity event, DealStatusType status, EventType type);
+    List<DealHistoryRpt> getHistory(String code, String classCode, String sDateBegin, String sDateEnd);
 
     default DealEntity procLimit(DealEntity deal, DataChart data) {
         return procLimit(deal, data, false);

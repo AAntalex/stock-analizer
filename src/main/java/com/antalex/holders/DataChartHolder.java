@@ -2,6 +2,8 @@ package com.antalex.holders;
 
 import org.springframework.web.context.request.RequestContextHolder;
 
+import java.util.Optional;
+
 import static org.springframework.web.context.request.RequestAttributes.SCOPE_REQUEST;
 
 public class DataChartHolder {
@@ -10,8 +12,9 @@ public class DataChartHolder {
     }
 
     public static Boolean isTest() {
-        return (Boolean) RequestContextHolder.getRequestAttributes()
+        Boolean result = (Boolean) RequestContextHolder.getRequestAttributes()
                 .getAttribute("test", SCOPE_REQUEST);
+        return Optional.ofNullable(result).orElse(false);
     }
 
     public static void setTest(Boolean test) {
@@ -19,8 +22,9 @@ public class DataChartHolder {
     }
 
     public static Boolean isCalcCorr() {
-        return (Boolean) RequestContextHolder.getRequestAttributes()
+        Boolean result = (Boolean) RequestContextHolder.getRequestAttributes()
                 .getAttribute("calcCorr", SCOPE_REQUEST);
+        return Optional.ofNullable(result).orElse(false);
     }
 
     public static void setCalcCorr(Boolean test) {

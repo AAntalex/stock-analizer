@@ -4,6 +4,7 @@ import com.antalex.dto.DataChartDto;
 import com.antalex.holders.DateFormatHolder;
 import com.antalex.service.ChartFormer;
 import com.antalex.service.ChartService;
+import com.antalex.service.DealService;
 import com.antalex.service.IndicatorService;
 import javafx.util.Pair;
 import lombok.AllArgsConstructor;
@@ -18,6 +19,7 @@ public class ChartServiceImpl implements ChartService {
     private ChartFormer chartFormer;
     private AllHistoryService allHistoryService;
     private IndicatorService indicatorService;
+    private DealService dealService;
 
     @Override
     public void init() {
@@ -29,10 +31,12 @@ public class ChartServiceImpl implements ChartService {
     public List<DataChartDto> query(String secClass, String sDateBegin, String sDateEnd, String stockClass, int approximation) {
         chartFormer.setApproximation(approximation);
         splitDate(sDateBegin, sDateEnd)
-                .forEach(interval ->
-                        allHistoryService.query(secClass, interval.getKey(), interval.getValue(), stockClass)
-                                .forEach(chartFormer::add)
-                );
+                .forEach(interval -> {
+                    allHistoryService.query(secClass, interval.getKey(), interval.getValue(), stockClass)
+                            .forEach(chartFormer::add);
+                    dealService.getHistory(secClass, stockClass, interval.getKey(), interval.getValue())
+                            .forEach(chartFormer::addDealHistory);
+                });
         return chartFormer.getDataList(sDateBegin, sDateEnd);
     }
 

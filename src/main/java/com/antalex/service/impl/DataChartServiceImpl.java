@@ -2,6 +2,7 @@ package com.antalex.service.impl;
 
 import com.antalex.holders.DataHolder;
 import com.antalex.model.*;
+import com.antalex.persistence.entity.EventEntity;
 import com.antalex.persistence.entity.IndicatorValueEntity;
 import com.antalex.persistence.entity.TraceValueEntity;
 import com.antalex.service.DataChartService;
@@ -97,6 +98,16 @@ public class DataChartServiceImpl implements DataChartService {
         return result;
     }
 
+    @Override
+    public Boolean checkEvent(DataChart data, EventEntity event) {
+        return !Objects.isNull(event) &&
+                (event.getTriggers().isEmpty() ||
+                        event.getTriggers()
+                                .stream()
+                                .allMatch(it -> getBool(data, it.getTrigger().getCondition()))
+                );
+    }
+
     private BigDecimal calcValue(DataChart data, String variable) {
         if (data == null) {
             return null;
@@ -112,10 +123,10 @@ public class DataChartServiceImpl implements DataChartService {
             case LOW: {
                 return data.getData().getCandle().getLow();
             }
+            case PRICE:
             case CLOSE: {
                 return data.getData().getCandle().getClose();
             }
-            case PRICE:
             case OPEN: {
                 return data.getData().getCandle().getOpen();
             }

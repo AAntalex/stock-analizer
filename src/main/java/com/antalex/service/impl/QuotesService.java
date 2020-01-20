@@ -1,6 +1,6 @@
 package com.antalex.service.impl;
 
-import com.antalex.persistence.entity.Quotes;
+import com.antalex.persistence.entity.QuotesRpt;
 import com.antalex.persistence.repository.QuotesRepository;
 import com.antalex.service.DataStockService;
 import lombok.AllArgsConstructor;
@@ -12,10 +12,10 @@ import java.util.List;
 
 @Service
 @AllArgsConstructor(onConstructor = @__(@Autowired))
-public class QuotesService implements DataStockService<Quotes> {
+public class QuotesService implements DataStockService<QuotesRpt> {
     private QuotesRepository quotesRepository;
 
-    public List<Quotes> query(String secClass, String sDateBegin, String sDateEnd, String stockClass) {
+    public List<QuotesRpt> query(String secClass, String sDateBegin, String sDateEnd, String stockClass) {
         if (sDateEnd == null || sDateEnd.isEmpty()) {
             return quotesRepository.findByCodeAndUnoGreaterThanEqualAndClassCodeAndQuotesIsNotNull(secClass, sDateBegin, stockClass);
         }

@@ -1,7 +1,7 @@
 package com.antalex.model;
 
 import com.antalex.dto.VolumeDto;
-import com.antalex.persistence.entity.AllHistory;
+import com.antalex.persistence.entity.AllHistoryRpt;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -11,7 +11,7 @@ import java.util.*;
 public class CacheDadaChart {
     private final Map<Date, DataChart> data = new HashMap<>();
     private final List<DataChart> dataList = new ArrayList<>();
-    private final Map<String, AllHistory> allHistory = new HashMap<>();
+    private final Map<String, AllHistoryRpt> allHistory = new HashMap<>();
     private List<VolumeDto> lastBidQuotes;
     private List<VolumeDto> lastOfferQuotes;
     private DataChart firstData;

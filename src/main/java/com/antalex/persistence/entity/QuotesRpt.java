@@ -6,12 +6,11 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
-import java.math.BigDecimal;
 
-@Table(name = "VW_RPT_ALL_TRADES")
+@Table(name = "VW_RPT_ALL_QUOTES")
 @Data
 @Entity
-public class AllTrades {
+public class QuotesRpt {
     @Id
     @Column(name = "UNO")
     private String uno;
@@ -19,14 +18,8 @@ public class AllTrades {
     private String classCode;
     @Column(name = "CODE")
     private String code;
-    @Column(name = "TRADE_NUM")
-    private String tradeNum;
-    @Column(name = "QTY")
-    private Double qty;
-    @Column(name = "BID_FLAG")
-    private Boolean bidFlag;
-    @Column(name = "PRICE")
-    private BigDecimal price;
+    @Column(name = "QUOTES")
+    private String quotes;
     @Column(name = "LOTSIZE")
     private Integer lotSize;
 }

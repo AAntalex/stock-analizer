@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 @Table(name = "VW_RPT_ALL_TRADES_AND_QUOTES")
 @Data
 @Entity
-public class AllHistory {
+public class AllHistoryRpt implements History{
     @Id
     @Column(name = "UNO")
     private String uno;

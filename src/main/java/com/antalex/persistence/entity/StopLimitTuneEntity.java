@@ -20,4 +20,7 @@ public class StopLimitTuneEntity {
     private BigDecimal price;
     @Column(name = "C_STOP_PRICE")
     private BigDecimal stopPrice;
+    @OneToOne
+    @JoinColumn(name = "C_EVENT")
+    private EventEntity event;
 }

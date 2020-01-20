@@ -20,6 +20,7 @@ public class DataChartDto {
     private BigDecimal minPercent;
     private List<Indicator> indicators;
     private List<QuoteGroupDto> quotes;
+    private List<DealHistoryDto> dealHistory;
     private BigDecimal bidUp;
     private BigDecimal bidDown;
     private BigDecimal offerUp;

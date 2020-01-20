@@ -19,7 +19,7 @@ public class ClassSecEntity {
     @Column(name = "C_LONGNAME")
     private String longName;
     @Column(name = "C_CLASS_CODE")
-    private String ClassCode;
+    private String classCode;
     @Column(name = "C_SEC_SCALE")
     private Integer scale;
     @Column(name = "C_LOTSIZE")

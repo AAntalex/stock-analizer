@@ -256,7 +256,7 @@ public class TestServiceImpl implements TestService {
                 .collect(Collectors.toList());
     }
 
-    private void setPrice(DealEntity deal, AllHistory history) {
+    private void setPrice(DealEntity deal, AllHistoryRpt history) {
         if (deal.getType() == EventType.SELL ||
                 (deal.getType() == EventType.TAKE_PROFIT ||
                         deal.getType() == EventType.STOP_LIMIT) &&
@@ -268,13 +268,13 @@ public class TestServiceImpl implements TestService {
         }
     }
 
-    private BigDecimal getBuyPrice(DealEntity deal, AllHistory history) {
+    private BigDecimal getBuyPrice(DealEntity deal, AllHistoryRpt history) {
         return Optional.ofNullable(history)
-                .filter(AllHistory::getBidFlag)
+                .filter(AllHistoryRpt::getBidFlag)
                 .filter(it -> new BigDecimal(it.getUno().substring(0, 14))
                         .subtract(new BigDecimal(deal.getUno().substring(0, 14)))
                         .compareTo(TIME_OUT) >= 0)
-                .map(AllHistory::getPrice)
+                .map(AllHistoryRpt::getPrice)
                 .filter(
                         it -> Optional.ofNullable(deal.getLimitPrice())
                                 .map(limit -> limit.compareTo(it) >= 0)
@@ -283,13 +283,13 @@ public class TestServiceImpl implements TestService {
                 .orElse(null);
     }
 
-    private BigDecimal getSellPrice(DealEntity deal, AllHistory history) {
+    private BigDecimal getSellPrice(DealEntity deal, AllHistoryRpt history) {
         return Optional.ofNullable(history)
                 .filter(it -> !it.getBidFlag())
                 .filter(it -> new BigDecimal(it.getUno().substring(0, 14))
                         .subtract(new BigDecimal(deal.getUno().substring(0, 14)))
                         .compareTo(TIME_OUT) >= 0)
-                .map(AllHistory::getPrice)
+                .map(AllHistoryRpt::getPrice)
                 .filter(
                         it -> Optional.ofNullable(deal.getLimitPrice())
                                 .map(limit -> limit.compareTo(it) <= 0)

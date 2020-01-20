@@ -1,11 +1,11 @@
 package com.antalex.persistence.repository;
 
-import com.antalex.persistence.entity.Quotes;
+import com.antalex.persistence.entity.QuotesRpt;
 import org.springframework.data.repository.Repository;
 
 import java.util.List;
 
-public interface QuotesRepository extends Repository<Quotes, String> {
-    List<Quotes> findByCodeAndUnoGreaterThanEqualAndUnoLessThanEqualAndClassCodeAndQuotesIsNotNull(String code, String sDateBegin, String sDateEnd, String ClassCode);
-    List<Quotes> findByCodeAndUnoGreaterThanEqualAndClassCodeAndQuotesIsNotNull(String code, String sDateBegin, String ClassCode);
+public interface QuotesRepository extends Repository<QuotesRpt, String> {
+    List<QuotesRpt> findByCodeAndUnoGreaterThanEqualAndUnoLessThanEqualAndClassCodeAndQuotesIsNotNull(String code, String sDateBegin, String sDateEnd, String classCode);
+    List<QuotesRpt> findByCodeAndUnoGreaterThanEqualAndClassCodeAndQuotesIsNotNull(String code, String sDateBegin, String classCode);
 }

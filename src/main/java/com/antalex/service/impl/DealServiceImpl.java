@@ -8,6 +8,7 @@ import com.antalex.model.enums.DealStatusType;
 import com.antalex.model.enums.EventType;
 import com.antalex.model.enums.RateType;
 import com.antalex.persistence.entity.*;
+import com.antalex.persistence.repository.DealHistoryRepository;
 import com.antalex.persistence.repository.DealRepository;
 import com.antalex.service.DataChartService;
 import com.antalex.service.DealService;
@@ -29,6 +30,7 @@ public class DealServiceImpl implements DealService {
     private final DealRepository dealRepository;
     private final DataChartService dataChartService;
     private final TariffPlanService tariffPlanService;
+    private final DealHistoryRepository dealHistoryRepository;
 
     @Transactional
     @Override
@@ -36,7 +38,7 @@ public class DealServiceImpl implements DealService {
         if (entity == null) {
             return null;
         }
-        if (Optional.ofNullable(DataChartHolder.isCalcCorr()).orElse(false)) {
+        if (DataChartHolder.isCalcCorr()) {
             return entity;
         }
 /*
@@ -75,6 +77,23 @@ public class DealServiceImpl implements DealService {
     public void stopBatch() {
         BatchDataHolder.setBatchSize(0);
         procBatch();
+    }
+
+    @Override
+    public List<DealHistoryRpt> getHistory(String code, String classCode, String sDateBegin, String sDateEnd) {
+        if (sDateEnd == null || sDateEnd.isEmpty()) {
+            return dealHistoryRepository.findByCodeAndClassCodeAndUnoGreaterThanEqualAndUnoLessThanEqual(
+                    code,
+                    classCode,
+                    sDateBegin,
+                    sDateEnd
+            );
+        }
+        return dealHistoryRepository.findByCodeAndClassCodeAndUnoGreaterThanEqual(
+                code,
+                classCode,
+                sDateBegin
+        );
     }
 
     @Transactional
@@ -137,10 +156,10 @@ public class DealServiceImpl implements DealService {
         BigDecimal price = data.getData().getCandle().getClose();
         Boolean save = (setMaxPrice(deal, price) || setMinPrice(deal, price)) && !batch;
         DealEntity limitDeal = null;
-        if (checkStopLimit(deal, price)) {
+        if (checkStopLimit(deal, price, data)) {
             limitDeal = this.newDeal(
                     data,
-                    deal.getEvent(),
+                    deal.getEvent().getStopLimit().getEvent(),
                     EventType.STOP_LIMIT,
                     deal.getStopLimit().getPrice(),
                     deal.getVolume(),
@@ -150,10 +169,10 @@ public class DealServiceImpl implements DealService {
             addHistory(deal, price, data.getHistory().getUno());
             save = true;
         }
-        if (checkTakeProfit(deal, price)) {
+        if (checkTakeProfit(deal, price, data)) {
             limitDeal = this.newDeal(
                     data,
-                    deal.getEvent(),
+                    deal.getEvent().getTakeProfit().getEvent(),
                     EventType.TAKE_PROFIT,
                     deal.getType() == EventType.BUY
                             ? price.subtract(deal.getTakeProfit().getSpread())
@@ -183,13 +202,11 @@ public class DealServiceImpl implements DealService {
                             sum
                     )
             );
-            DealEntity mainDeal = null;
             if (deal.getType() == EventType.BUY || deal.getType() == EventType.SELL) {
                 deal.setStatus(DealStatusType.OPEN);
-                mainDeal = deal;
             } else {
                 deal.setStatus(DealStatusType.CLOSED);
-                mainDeal = deal.getMain();
+                DealEntity mainDeal = deal.getMain();
                 if (mainDeal != null) {
                     BigDecimal mainSum = getSum(mainDeal);
                     mainDeal.setStatus(DealStatusType.CLOSED);
@@ -220,17 +237,11 @@ public class DealServiceImpl implements DealService {
                                             .reduce(BigDecimal.ZERO, BigDecimal::add)
                             )
                     );
-
-
-
-
-
                 }
             }
-            if (Objects.nonNull(mainDeal)) {
-                addHistory(mainDeal, price, uno);
-            }
-
+            addHistory(deal, price, uno);
+            Optional.ofNullable(deal.getMain())
+                    .ifPresent(it -> addHistory(it, price, uno));
             this.save(deal);
         }
     }
@@ -299,13 +310,15 @@ public class DealServiceImpl implements DealService {
         return false;
     }
 
-    private Boolean checkStopLimit(DealEntity deal, BigDecimal price) {
+    private Boolean checkStopLimit(DealEntity deal, BigDecimal price, DataChart data) {
         return price != null && deal.getStopLimit() != null && deal.getPrice() != null &&
-                (deal.getType() == EventType.BUY && price.compareTo(deal.getStopLimit().getStopPrice()) <= 0 ||
-                deal.getType() == EventType.SELL && price.compareTo(deal.getStopLimit().getStopPrice()) >= 0);
+                (
+                        deal.getType() == EventType.BUY && price.compareTo(deal.getStopLimit().getStopPrice()) <= 0 ||
+                        deal.getType() == EventType.SELL && price.compareTo(deal.getStopLimit().getStopPrice()) >= 0
+                ) || dataChartService.checkEvent(data, deal.getEvent().getStopLimit().getEvent());
     }
 
-    private Boolean checkTakeProfit(DealEntity deal, BigDecimal price) {
+    private Boolean checkTakeProfit(DealEntity deal, BigDecimal price, DataChart data) {
         if (price == null || deal.getTakeProfit() == null || deal.getPrice() == null) {
             return false;
         }
@@ -314,7 +327,8 @@ public class DealServiceImpl implements DealService {
                     deal.getType() == EventType.BUY &&
                             price.compareTo(deal.getTakeProfit().getPrice()) >= 0 ||
                             deal.getType() == EventType.SELL &&
-                                    price.compareTo(deal.getTakeProfit().getPrice()) <= 0);
+                                    price.compareTo(deal.getTakeProfit().getPrice()) <= 0 ||
+                            dataChartService.checkEvent(data, deal.getEvent().getTakeProfit().getEvent()));
         }
         return deal.getTakeProfit().getActive() &&
                 (
@@ -327,7 +341,7 @@ public class DealServiceImpl implements DealService {
     }
 
     private StopLimitEntity getStopLimit(DealEntity deal, BigDecimal price) {
-        if (deal.getEvent() == null &&
+        if (deal.getEvent() == null ||
                 deal.getEvent().getStopLimit() == null ||
                 deal.getType() != EventType.BUY && deal.getType() != EventType.SELL)
         {
@@ -375,7 +389,7 @@ public class DealServiceImpl implements DealService {
     }
 
     private TakeProfitEntity getTakeProfit(DealEntity deal, BigDecimal price) {
-        if (deal.getEvent() == null &&
+        if (deal.getEvent() == null ||
                 deal.getEvent().getTakeProfit() == null ||
                 deal.getType() != EventType.BUY && deal.getType() != EventType.SELL)
         {

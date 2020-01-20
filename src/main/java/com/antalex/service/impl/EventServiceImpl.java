@@ -31,7 +31,7 @@ public class EventServiceImpl implements EventService {
     public void apply(DataChart data, EventEntity event) {
         if (
                 (event.getType() == EventType.BUY || event.getType() == EventType.SELL) &&
-                        check(data, event))
+                        dataChartService.checkEvent(data, event))
         {
 
 
@@ -66,12 +66,6 @@ public class EventServiceImpl implements EventService {
                 .forEach(event -> apply(data, event));
         eventRepository.findAllByStatusAndType(StatusType.ENABLED, EventType.SELL)
                 .forEach(event -> apply(data, event));
-    }
-
-    private Boolean check(DataChart data, EventEntity event) {
-        return event.getTriggers()
-                .stream()
-                .allMatch(it -> dataChartService.getBool(data, it.getTrigger().getCondition()));
     }
 }
 

@@ -7,7 +7,11 @@ import com.antalex.holders.DataHolder;
 import com.antalex.holders.DateFormatHolder;
 import com.antalex.mapper.DtoMapper;
 import com.antalex.model.*;
-import com.antalex.persistence.entity.AllHistory;
+import com.antalex.model.enums.DealStatusType;
+import com.antalex.persistence.entity.AllHistoryRpt;
+import com.antalex.persistence.entity.DealHistoryRpt;
+import com.antalex.persistence.entity.History;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +19,7 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Component
 public class ChartFormer {
     private static final String START_TIME = "100000";
@@ -52,9 +57,14 @@ public class ChartFormer {
         }
     }
 
-    private DataChart getDataChart(AllHistory history) {
+    private DataChart getDataChart(History history) {
+        Date date = history.getDate();
+        return dataChartService.getCache().getData().get(date);
+    }
+
+    private DataChart getDataChart(AllHistoryRpt history) {
         Map<Date, DataChart> data = dataChartService.getCache().getData();
-        Date date = DateFormatHolder.getDateFromString(history.getUno());
+        Date date = history.getDate();
         DataChart dataChart = data.get(date);
         if (dataChart == null) {
             dataChart = new DataChart();
@@ -125,17 +135,33 @@ public class ChartFormer {
             }
             dataChartService.getCache().setLastData(dataChart);
         }
-        if (Optional.ofNullable(DataChartHolder.isCalcCorr()).orElse(false)) {
+        if (DataChartHolder.isCalcCorr()) {
             testService.calcCorr(dataChart);
         }
-        if (Optional.ofNullable(DataChartHolder.isTest()).orElse(false)) {
+        if (DataChartHolder.isTest()) {
             testService.test(dataChart);
         }
     }
 
-    public void add(AllHistory history) {
+    public void addDealHistory(DealHistoryRpt history) {
+        DataChart dataChart = getDataChart(history);
+        if (
+                (
+                        history.getStatus() == DealStatusType.OPEN ||
+                                history.getStatus() == DealStatusType.CLOSED
+                ) &&
+                        Optional.ofNullable(dataChart)
+                                .map(DataChart::getDealHistory)
+                                .map(it -> !it.containsKey(history.getUno()))
+                                .orElse(false))
+        {
+            dataChart.getDealHistory().put(history.getUno(), history);
+        }
+    }
+
+    public void add(AllHistoryRpt history) {
         String uno = history.getUno();
-        Map<String, AllHistory> allHistory = dataChartService.getCache().getAllHistory();
+        Map<String, AllHistoryRpt> allHistory = dataChartService.getCache().getAllHistory();
         if (checkTime(uno) && !allHistory.containsKey(uno)) {
             allHistory.put(uno, history);
             if (history.getQuotes() != null) {
@@ -164,7 +190,7 @@ public class ChartFormer {
         }
     }
 
-    private DataChart addQuotes(AllHistory history) {
+    private DataChart addQuotes(AllHistoryRpt history) {
         DataChart dataChart = getDataChart(history);
         List<String> quotesList = Arrays.asList(history.getQuotes().split(";"));
         HashMap<BigDecimal, BigDecimal> currentQuotesBid = new HashMap<>();
@@ -196,7 +222,6 @@ public class ChartFormer {
                                 BigDecimal.ZERO, 0d
                         )
                 );
-
         List<VolumeDto> quotesList;
         if (bidFlag) {
             quotesList = quotesSource.entrySet().stream()
@@ -321,7 +346,7 @@ public class ChartFormer {
                 });
     }
 
-    private DataChart addDeal(AllHistory history) {
+    private DataChart addDeal(AllHistoryRpt history) {
         if (Optional
                 .ofNullable(dataChartService.getCache().getMaxPrice())
                 .map(it -> it.compareTo(history.getPrice()) < 0)
@@ -391,11 +416,11 @@ public class ChartFormer {
         DataHolder.setFirstData(dataChartService.getCache().getFirstData());
 
 
-        setTrend(0, 0);
-        setTrend(30, 0);
-        setTrend(60, 0);
-        setTrend(120, 0);
-        setTrend(240, 0);
+        setTrend(0, 5);
+        setTrend(30, 5);
+        setTrend(60, 5);
+        setTrend(120, 5);
+        setTrend(240, 5);
 
 
         return getDataList(DateFormatHolder.getDateFromString(sDateBegin), DateFormatHolder.getDateFromString(sDateEnd));

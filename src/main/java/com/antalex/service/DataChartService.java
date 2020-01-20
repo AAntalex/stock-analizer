@@ -3,6 +3,7 @@ package com.antalex.service;
 import com.antalex.model.CacheDadaChart;
 import com.antalex.model.DataChart;
 import com.antalex.model.Trend;
+import com.antalex.persistence.entity.EventEntity;
 import com.antalex.persistence.entity.IndicatorValueEntity;
 import com.antalex.persistence.entity.TraceValueEntity;
 
@@ -21,4 +22,5 @@ public interface DataChartService {
     List<TraceValueEntity> getTraceValues();
     Trend getTrend(Integer period, Integer offset);
     String normalizeExpression(String expression);
+    Boolean checkEvent(DataChart data, EventEntity event);
 }
