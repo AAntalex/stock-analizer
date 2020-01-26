@@ -27,7 +27,6 @@ public class CacheDadaChart {
         data.setPrev(this.lastData);
         this.lastData = data;
 
-
         if (this.firstData == null) {
             this.firstData = data;
         }

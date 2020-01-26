@@ -70,8 +70,8 @@ public class ChartFormer {
             dataChart = new DataChart();
             dataChart.setDate(date);
             data.put(date, dataChart);
-            dataChart.setIdx(data.size() - 1);
             dataChart.setCalcIndicator(false);
+            dataChart.setIdx(dataChartService.getCache().getDataList().size());
         }
         dataChart.setHistory(history);
         return dataChart;
@@ -416,11 +416,11 @@ public class ChartFormer {
         DataHolder.setFirstData(dataChartService.getCache().getFirstData());
 
 
-        setTrend(0, 5);
-        setTrend(30, 5);
-        setTrend(60, 5);
-        setTrend(120, 5);
-        setTrend(240, 5);
+        setTrend(0, 0);
+        setTrend(30, 0);
+        setTrend(60, 0);
+        setTrend(120, 0);
+        setTrend(240, 0);
 
 
         return getDataList(DateFormatHolder.getDateFromString(sDateBegin), DateFormatHolder.getDateFromString(sDateEnd));

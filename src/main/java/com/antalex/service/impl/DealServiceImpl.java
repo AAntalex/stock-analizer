@@ -156,7 +156,7 @@ public class DealServiceImpl implements DealService {
         BigDecimal price = data.getData().getCandle().getClose();
         Boolean save = (setMaxPrice(deal, price) || setMinPrice(deal, price)) && !batch;
         DealEntity limitDeal = null;
-        if (checkStopLimit(deal, price, data)) {
+        if (checkStopLimit(deal, data)) {
             limitDeal = this.newDeal(
                     data,
                     deal.getEvent().getStopLimit().getEvent(),
@@ -169,7 +169,7 @@ public class DealServiceImpl implements DealService {
             addHistory(deal, price, data.getHistory().getUno());
             save = true;
         }
-        if (checkTakeProfit(deal, price, data)) {
+        if (checkTakeProfit(deal, data)) {
             limitDeal = this.newDeal(
                     data,
                     deal.getEvent().getTakeProfit().getEvent(),
@@ -310,7 +310,8 @@ public class DealServiceImpl implements DealService {
         return false;
     }
 
-    private Boolean checkStopLimit(DealEntity deal, BigDecimal price, DataChart data) {
+    private Boolean checkStopLimit(DealEntity deal, DataChart data) {
+        BigDecimal price = data.getData().getCandle().getClose();
         return price != null && deal.getStopLimit() != null && deal.getPrice() != null &&
                 (
                         deal.getType() == EventType.BUY && price.compareTo(deal.getStopLimit().getStopPrice()) <= 0 ||
@@ -318,7 +319,8 @@ public class DealServiceImpl implements DealService {
                 ) || dataChartService.checkEvent(data, deal.getEvent().getStopLimit().getEvent());
     }
 
-    private Boolean checkTakeProfit(DealEntity deal, BigDecimal price, DataChart data) {
+    private Boolean checkTakeProfit(DealEntity deal, DataChart data) {
+        BigDecimal price = data.getData().getCandle().getClose();
         if (price == null || deal.getTakeProfit() == null || deal.getPrice() == null) {
             return false;
         }
