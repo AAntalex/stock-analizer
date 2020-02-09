@@ -2,11 +2,15 @@ package com.antalex.service.impl;
 
 import com.antalex.holders.DataHolder;
 import com.antalex.model.*;
+import com.antalex.model.enums.StatusType;
+import com.antalex.model.enums.VariableType;
+import com.antalex.persistence.entity.AllHistoryRpt;
 import com.antalex.persistence.entity.EventEntity;
 import com.antalex.persistence.entity.IndicatorValueEntity;
 import com.antalex.persistence.entity.TraceValueEntity;
 import com.antalex.service.DataChartService;
 import com.antalex.service.TrendService;
+import com.google.common.base.Enums;
 import com.udojava.evalex.Expression;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -19,28 +23,9 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 public class DataChartServiceImpl implements DataChartService {
-    private static final String VOL = "VOL";
-    private static final String PRICE = "PRICE";
-    private static final String OPEN = "OPEN";
-    private static final String CLOSE = "CLOSE";
-    private static final String HIGH = "HIGH";
-    private static final String LOW = "LOW";
-    private static final String BID_VOL = "BID_VOL";
-    private static final String BID_OPEN = "BID_OPEN";
-    private static final String BID_CLOSE = "BID_CLOSE";
-    private static final String BID_HIGH = "BID_HIGH";
-    private static final String BID_LOW = "BID_LOW";
-    private static final String BID_UP = "BID_UP";
-    private static final String BID_DOWN = "BID_DOWN";
-    private static final String OFFER_UP = "OFFER_UP";
-    private static final String OFFER_DOWN = "OFFER_DOWN";
-    private static final String OFFER_VOL = "OFFER_VOL";
-    private static final String OFFER_OPEN = "OFFER_OPEN";
-    private static final String OFFER_CLOSE = "OFFER_CLOSE";
-    private static final String OFFER_HIGH = "OFFER_HIGH";
-    private static final String OFFER_LOW = "OFFER_LOW";
     private static final String TREND = "TREND";
     private static final String ALPHA = "ALPHA";
+    private static final String WEIGHT = "WEIGHT";
     private static final String PREV = "_PREV";
     private CacheDadaChart cache;
     private Boolean trace = false;
@@ -101,11 +86,17 @@ public class DataChartServiceImpl implements DataChartService {
     @Override
     public Boolean checkEvent(DataChart data, EventEntity event) {
         return !Objects.isNull(event) &&
+                event.getStatus() == StatusType.ENABLED &&
                 !event.getTriggers().isEmpty() &&
                 event.getTriggers()
                         .stream()
+                        .filter(it -> it.getStatus() != StatusType.DISABLEЫ)
                         .allMatch(it -> getBool(data, it.getTrigger().getCondition()))
                 ;
+    }
+
+    private VariableType getVariableType(String variable) {
+        return Enums.getIfPresent(VariableType.class, variable).or(VariableType.DEFAULT);
     }
 
     private BigDecimal calcValue(DataChart data, String variable) {
@@ -113,7 +104,7 @@ public class DataChartServiceImpl implements DataChartService {
             return null;
         }
         variable = variable.toUpperCase();
-        switch (variable) {
+        switch (getVariableType(variable)) {
             case VOL: {
                 return new BigDecimal(data.getData().getVolume());
             }
@@ -202,6 +193,12 @@ public class DataChartServiceImpl implements DataChartService {
             case OFFER_DOWN: {
                 return Optional.ofNullable(data.getOfferDown()).orElse(BigDecimal.ZERO);
             }
+            case TIME: {
+                return Optional.ofNullable(data.getHistory())
+                        .map(AllHistoryRpt::getUno)
+                        .map(it -> new BigDecimal(it.substring(8, 14)))
+                        .orElse(BigDecimal.ZERO);
+            }
             default: {
                 if (data.getIndicators().containsKey(variable)) {
                     return data.getIndicators().get(variable).getValue();
@@ -214,11 +211,12 @@ public class DataChartServiceImpl implements DataChartService {
                     return getTrendValue(data, variable);
                 }
                 if (variable.endsWith(PREV)) {
+                    String prevVariable = variable.substring(0, variable.length() - 5);
                     return calcValue(
-                            data.getCalcIndicator()
+                            data.getCalcIndicator() || getVariableType(prevVariable) != VariableType.DEFAULT
                                     ? data.getPrev()
                                     : Optional.ofNullable(data.getPrev()).map(DataChart::getPrev).orElse(null) ,
-                            variable.substring(0, variable.length() - 5)
+                            prevVariable
                     );
                 }
                 return null;
@@ -289,6 +287,7 @@ public class DataChartServiceImpl implements DataChartService {
         String trendCode = null;
         Boolean isHigh = null;
         Boolean isAlpha = false;
+        Boolean isWeight = false;
         int offset = 0;
         int period = 0;
         for (String variablePart : variable.split("_")) {
@@ -299,12 +298,16 @@ public class DataChartServiceImpl implements DataChartService {
                 }
                 continue;
             }
-            if (isHigh == null && (LOW.equals(variablePart) || HIGH.equals(variablePart))) {
-                isHigh = HIGH.equals(variablePart);
+            if (isHigh == null && (VariableType.LOW.name().equals(variablePart) || VariableType.HIGH.name().equals(variablePart))) {
+                isHigh = VariableType.HIGH.name().equals(variablePart);
                 continue;
             }
             if (ALPHA.equals(variablePart)) {
                 isAlpha = true;
+                continue;
+            }
+            if (WEIGHT.equals(variablePart)) {
+                isWeight = true;
                 continue;
             }
             offset = Integer.parseInt(variablePart);
@@ -318,6 +321,9 @@ public class DataChartServiceImpl implements DataChartService {
         }
         if (isAlpha) {
             return isHigh ? trend.getHigh().getAlpha() : trend.getLow().getAlpha();
+        }
+        if (isWeight) {
+            return isHigh ? trend.getHighWeight() : trend.getLowWeight();
         }
         return isHigh ? trend.getHigh().f(data.getIdx()) : trend.getLow().f(data.getIdx());
     }

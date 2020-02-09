@@ -88,7 +88,7 @@ public class TestServiceImpl implements TestService {
     @Override
     public void test(DataChart data) {
         Integer count = dataChartService.getCache().getDataList().size();
-        if (count <= 240) {
+        if (count <= 480) {
             return;
         }
 

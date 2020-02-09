@@ -1,5 +1,6 @@
 package com.antalex.persistence.entity;
 
+import com.antalex.model.enums.StatusType;
 import lombok.Data;
 
 import javax.persistence.*;
@@ -17,6 +18,8 @@ public class EventTriggerEntity {
     private Long eventId;
     @Column(name = "C_ORDER")
     private Integer order;
+    @Column(name = "C_STATUS")
+    private StatusType status;
     @OneToOne
     @JoinColumn(name = "C_TRIGGER")
     private TriggerEntity trigger;

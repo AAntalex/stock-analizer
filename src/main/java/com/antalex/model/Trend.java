@@ -2,6 +2,7 @@ package com.antalex.model;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -99,6 +100,14 @@ public class Trend {
                 this.low.setX1(x, y.getLow());
             }
         }
+    }
+
+    public BigDecimal getHighWeight() {
+        return new BigDecimal(this.end - this.high.getX2());
+    }
+
+    public BigDecimal getLowWeight() {
+        return new BigDecimal(this.end - this.low.getX2());
     }
 
     private Boolean isRightPoint(Integer x) {

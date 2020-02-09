@@ -247,7 +247,7 @@ public class DealServiceImpl implements DealService {
     }
 
     private void addHistory(DealEntity deal, BigDecimal price, String uno) {
-        if (Objects.isNull(deal)) {
+        if (Objects.isNull(deal) || Objects.nonNull(deal.getMain())) {
             return;
         }
         DealHistoryEntity dealHistoryEntity = new DealHistoryEntity();

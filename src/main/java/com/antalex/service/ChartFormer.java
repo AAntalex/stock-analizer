@@ -159,7 +159,7 @@ public class ChartFormer {
         }
     }
 
-    public void add(AllHistoryRpt history) {
+    public synchronized void add(AllHistoryRpt history) {
         String uno = history.getUno();
         Map<String, AllHistoryRpt> allHistory = dataChartService.getCache().getAllHistory();
         if (checkTime(uno) && !allHistory.containsKey(uno)) {
@@ -417,10 +417,10 @@ public class ChartFormer {
 
 
         setTrend(0, 0);
-        setTrend(30, 0);
         setTrend(60, 0);
         setTrend(120, 0);
         setTrend(240, 0);
+        setTrend(480, 0);
 
 
         return getDataList(DateFormatHolder.getDateFromString(sDateBegin), DateFormatHolder.getDateFromString(sDateEnd));

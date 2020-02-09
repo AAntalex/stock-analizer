@@ -1,0 +1,26 @@
+package com.antalex.model.enums;
+
+public enum VariableType {
+    VOL,
+    PRICE,
+    OPEN,
+    CLOSE,
+    HIGH,
+    LOW,
+    BID_VOL,
+    BID_OPEN,
+    BID_CLOSE,
+    BID_HIGH,
+    BID_LOW,
+    BID_UP,
+    BID_DOWN,
+    OFFER_UP,
+    OFFER_DOWN,
+    OFFER_VOL,
+    OFFER_OPEN,
+    OFFER_CLOSE,
+    OFFER_HIGH,
+    OFFER_LOW,
+    TIME,
+    DEFAULT,
+}
