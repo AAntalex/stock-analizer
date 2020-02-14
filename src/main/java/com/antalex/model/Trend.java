@@ -103,11 +103,13 @@ public class Trend {
     }
 
     public BigDecimal getHighWeight() {
-        return new BigDecimal(this.end - this.high.getX2());
+        return new BigDecimal(this.end - this.high.getX2())
+                .min(new BigDecimal(this.high.getX1() - this.start));
     }
 
     public BigDecimal getLowWeight() {
-        return new BigDecimal(this.end - this.low.getX2());
+        return new BigDecimal(this.end - this.low.getX2())
+                .min(new BigDecimal(this.low.getX1() - this.start));
     }
 
     private Boolean isRightPoint(Integer x) {
