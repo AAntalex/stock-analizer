@@ -12,5 +12,6 @@ public interface DealRepository extends CrudRepository<DealEntity, Long> {
     List<DealEntity> findAllByStatus(DealStatusType status);
     List<DealEntity> findAllByEventAndStatus(EventEntity event, DealStatusType status);
     List<DealEntity> findAllByEventAndStatusNot(EventEntity event, DealStatusType status);
+    List<DealEntity> findAllByStatusNot(DealStatusType status);
     List<DealEntity> findAllByEventAndStatusAndTypeAndResultIsNotNullOrderByUno(EventEntity event, DealStatusType status, EventType type);
 }

@@ -3,6 +3,7 @@ package com.antalex.controllers;
 import com.antalex.dto.DataChartDto;
 import com.antalex.holders.DataChartHolder;
 import com.antalex.service.ChartService;
+import com.antalex.service.DealService;
 import com.antalex.service.TestService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ import java.util.List;
 public class TestController {
     private ChartService chartService;
     private TestService testService;
+    private DealService dealService;
 
     @RequestMapping(method = RequestMethod.GET)
     public List<DataChartDto> getTestData (
@@ -32,7 +34,9 @@ public class TestController {
     ) {
         DataChartHolder.setTest(true);
         chartService.init();
+        dealService.startBatch(100);
         List<DataChartDto>  result = chartService.query(secClass, sDateBegin, sDateEnd, stockClass, interval);
+        dealService.stopBatch();
         log.info("AAA TEST is Done");
         return result;
 /*

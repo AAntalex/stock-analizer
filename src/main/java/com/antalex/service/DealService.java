@@ -1,5 +1,6 @@
 package com.antalex.service;
 
+import com.antalex.holders.BatchDataHolder;
 import com.antalex.model.DataChart;
 import com.antalex.model.enums.DealStatusType;
 import com.antalex.model.enums.EventType;
@@ -30,6 +31,6 @@ public interface DealService {
     List<DealHistoryRpt> getHistory(String code, String classCode, String sDateBegin, String sDateEnd);
 
     default DealEntity procLimit(DealEntity deal, DataChart data) {
-        return procLimit(deal, data, false);
+        return procLimit(deal, data, BatchDataHolder.getBachSize() > 0);
     }
 }

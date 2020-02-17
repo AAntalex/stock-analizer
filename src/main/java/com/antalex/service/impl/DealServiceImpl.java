@@ -13,24 +13,38 @@ import com.antalex.persistence.repository.DealRepository;
 import com.antalex.service.DataChartService;
 import com.antalex.service.DealService;
 import com.antalex.service.TariffPlanService;
-import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
-@AllArgsConstructor
 public class DealServiceImpl implements DealService {
-    private static final Map<String, DealEntity> CACHE = new LinkedHashMap<>();
+    private static final Map<String, DealEntity> BATCH_CACHE = new LinkedHashMap<>();
 
     private final DealRepository dealRepository;
     private final DataChartService dataChartService;
     private final TariffPlanService tariffPlanService;
     private final DealHistoryRepository dealHistoryRepository;
+    private final Map<String, DealEntity> cacheDeals;
+
+    DealServiceImpl (DealRepository dealRepository,
+                     DataChartService dataChartService,
+                     TariffPlanService tariffPlanService,
+                     DealHistoryRepository dealHistoryRepository)
+    {
+        this.dealRepository = dealRepository;
+        this.dataChartService = dataChartService;
+        this.tariffPlanService = tariffPlanService;
+        this.dealHistoryRepository = dealHistoryRepository;
+        this.cacheDeals =
+                dealRepository.findAllByStatusNot(DealStatusType.CLOSED).stream()
+                        .collect(Collectors.toMap(this::getHashCode, it -> it));
+    }
 
     @Transactional
     @Override
@@ -41,6 +55,7 @@ public class DealServiceImpl implements DealService {
         if (DataChartHolder.isCalcCorr()) {
             return entity;
         }
+        cacheDeals.putIfAbsent(getHashCode(entity), entity);
 /*
 
         System.out.println(
@@ -57,8 +72,8 @@ public class DealServiceImpl implements DealService {
 
 */
         if (BatchDataHolder.getBachSize() > 0) {
-            CACHE.put(getHashCode(entity), entity);
-            if (CACHE.size() >= BatchDataHolder.getBachSize()) {
+            BATCH_CACHE.putIfAbsent(getHashCode(entity), entity);
+            if (BATCH_CACHE.size() >= BatchDataHolder.getBachSize()) {
                 procBatch();
             }
             return entity;
@@ -70,7 +85,7 @@ public class DealServiceImpl implements DealService {
     @Override
     public void startBatch(Integer batchSize) {
         BatchDataHolder.setBatchSize(batchSize);
-        CACHE.clear();
+        BATCH_CACHE.clear();
     }
 
     @Override
@@ -98,23 +113,41 @@ public class DealServiceImpl implements DealService {
 
     @Transactional
     protected void procBatch() {
-        CACHE.values().forEach(dealRepository::save);
-        CACHE.clear();
+        BATCH_CACHE.values().forEach(dealRepository::save);
+        BATCH_CACHE.clear();
     }
 
     @Override
     public List<DealEntity> findAllByStatus(DealStatusType status) {
-        return dealRepository.findAllByStatus(status);
+        if (BatchDataHolder.getBachSize() > 0) {
+            return cacheDeals.values().stream()
+                    .filter(it -> it.getStatus() == status)
+                    .collect(Collectors.toList());
+        } else {
+            return dealRepository.findAllByStatus(status);
+        }
     }
 
     @Override
     public List<DealEntity> findAllByEventAndStatus(EventEntity event, DealStatusType status) {
-        return dealRepository.findAllByEventAndStatus(event, status);
+        if (BatchDataHolder.getBachSize() > 0) {
+            return cacheDeals.values().stream()
+                    .filter(it -> it.getEvent() == event && it.getStatus() == status)
+                    .collect(Collectors.toList());
+        } else {
+            return dealRepository.findAllByEventAndStatus(event, status);
+        }
     }
 
     @Override
     public List<DealEntity> findAllByEventAndStatusNot(EventEntity event, DealStatusType status) {
-        return dealRepository.findAllByEventAndStatusNot(event, status);
+        if (BatchDataHolder.getBachSize() > 0) {
+            return cacheDeals.values().stream()
+                    .filter(it -> it.getEvent() == event && it.getStatus() != status)
+                    .collect(Collectors.toList());
+        } else {
+            return dealRepository.findAllByEventAndStatusNot(event, status);
+        }
     }
 
     @Override
@@ -269,8 +302,9 @@ public class DealServiceImpl implements DealService {
 
     private String getHashCode(DealEntity entity) {
         return entity.getUno() +
-                entity.getType().name() +
-                Optional.ofNullable(entity.getMain()).map(DealEntity::getUno).orElse("");
+                Optional.ofNullable(entity.getMain())
+                        .map(it -> it.getUno() + it.getEvent().getCode())
+                        .orElse(entity.getEvent().getCode());
     }
 
     private BigDecimal getSum(DealEntity deal) {

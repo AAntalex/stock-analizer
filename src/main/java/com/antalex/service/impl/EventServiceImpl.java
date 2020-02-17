@@ -9,18 +9,32 @@ import com.antalex.persistence.repository.EventRepository;
 import com.antalex.service.DataChartService;
 import com.antalex.service.DealService;
 import com.antalex.service.EventService;
-import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
-@AllArgsConstructor
 public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
     private final DataChartService dataChartService;
     private final DealService dealService;
+    private final List<EventEntity> eventList;
+
+
+    EventServiceImpl (EventRepository eventRepository,
+                      DataChartService dataChartService,
+                      DealService dealService)
+    {
+        this.eventRepository = eventRepository;
+        this.dataChartService = dataChartService;
+        this.dealService = dealService;
+        this.eventList = Stream.concat(
+                eventRepository.findAllByStatusAndType(StatusType.ENABLED, EventType.BUY).stream(),
+                eventRepository.findAllByStatusAndType(StatusType.ENABLED, EventType.SELL).stream()
+        ).collect(Collectors.toList());
+    }
 
     @Override
     public EventEntity findByCode(String code) {
@@ -62,10 +76,7 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public void applyAll(DataChart data) {
-        eventRepository.findAllByStatusAndType(StatusType.ENABLED, EventType.BUY)
-                .forEach(event -> apply(data, event));
-        eventRepository.findAllByStatusAndType(StatusType.ENABLED, EventType.SELL)
-                .forEach(event -> apply(data, event));
+        eventList.forEach(event -> apply(data, event));
     }
 }
 
