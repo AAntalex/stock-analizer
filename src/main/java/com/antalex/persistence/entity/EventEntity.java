@@ -5,10 +5,9 @@ import com.antalex.model.enums.StatusType;
 import lombok.Data;
 
 import javax.persistence.*;
-import java.util.ArrayList;
 import java.util.List;
 
-@Table(name = "Z#EVENT_DEAL")
+@Table(name = "Z#EVENT_ORDER")
 @Data
 @Entity
 public class EventEntity {

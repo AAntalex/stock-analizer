@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface TradeClassesRepository extends Repository<TradeClassesEntity, String> {
     List<TradeClassesEntity> findAll();
+    TradeClassesEntity findOneByCode(String code);
 }

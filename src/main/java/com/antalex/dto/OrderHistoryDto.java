@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 
 @Data
 @Builder
-public class DealHistoryDto {
+public class OrderHistoryDto {
     private BigDecimal price;
     private EventType type;
 }

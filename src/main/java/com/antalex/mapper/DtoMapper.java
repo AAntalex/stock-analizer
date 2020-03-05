@@ -32,7 +32,7 @@ public class DtoMapper {
         }
     }
 
-    private <T, M> DtoConverter<T, M> getDtoConverter(T entity, Class<M> targetClass) {
+    private synchronized <T, M> DtoConverter<T, M> getDtoConverter(T entity, Class<M> targetClass) {
         if (entity == null) {
             return null;
         }

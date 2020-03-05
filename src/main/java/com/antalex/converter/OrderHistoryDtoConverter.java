@@ -1,20 +1,19 @@
 package com.antalex.converter;
 
-import com.antalex.dto.DealHistoryDto;
+import com.antalex.dto.OrderHistoryDto;
 import com.antalex.mapper.DtoConverter;
-import com.antalex.persistence.entity.DealHistoryRpt;
+import com.antalex.persistence.entity.OrderHistoryRpt;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
-
 @Component
-public class DealHistoryDtoConverter implements DtoConverter<DealHistoryRpt, DealHistoryDto> {
+public class OrderHistoryDtoConverter implements DtoConverter<OrderHistoryRpt, OrderHistoryDto> {
     @Override
-    public DealHistoryDto convert(DealHistoryRpt entity) {
+    public OrderHistoryDto convert(OrderHistoryRpt entity) {
         return Optional.ofNullable(entity)
                 .map(it ->
-                        DealHistoryDto.builder()
+                        OrderHistoryDto.builder()
                                 .price(it.getPrice())
                                 .type(it.getType())
                                 .build()

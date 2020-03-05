@@ -1,6 +1,6 @@
 package com.antalex.persistence.entity;
 
-import com.antalex.model.enums.DealStatusType;
+import com.antalex.model.enums.OrderStatusType;
 import com.antalex.model.enums.EventType;
 import lombok.Data;
 
@@ -9,10 +9,10 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
-@Table(name = "Z#AAA_DEAL")
+@Table(name = "Z#AAA_ORDER")
 @Data
 @Entity
-public class DealEntity {
+public class OrderEntity {
     @Id
     @Column(name = "ID")
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq_id")
@@ -24,7 +24,7 @@ public class DealEntity {
     private Integer lotSize;
     @Column(name = "C_SCALE")
     private Integer scale;
-    @Column(name = "C_DEAL_TYPE")
+    @Column(name = "C_ORDER_TYPE")
     private EventType type;
     @Column(name = "C_UNO")
     private String uno;
@@ -43,13 +43,13 @@ public class DealEntity {
     @Column(name = "C_CAPTION")
     private String caption;
     @Column(name = "C_STATUS")
-    private DealStatusType status;
+    private OrderStatusType status;
     @OneToOne
     @JoinColumn(name = "C_EVENT")
     private EventEntity event;
     @OneToOne
     @JoinColumn(name = "C_MAIN")
-    private DealEntity main;
+    private OrderEntity main;
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "C_TAKE_PROFIT")
     private TakeProfitEntity takeProfit;
@@ -66,8 +66,8 @@ public class DealEntity {
     @JoinColumn(name = "C_PARENT")
     private List<RateValueEntity> rates = new ArrayList<>();
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "C_DEAL")
-    private List<DealHistoryEntity> history = new ArrayList<>();
+    @JoinColumn(name = "C_ORDER_REF")
+    private List<OrderHistoryEntity> history = new ArrayList<>();
     @Transient
     private List<BigDecimal> boolTriggerValues = new ArrayList<>();
     @Transient

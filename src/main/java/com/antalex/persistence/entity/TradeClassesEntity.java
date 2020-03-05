@@ -15,6 +15,10 @@ public class TradeClassesEntity {
     private String code;
     @Column(name = "C_CLASS_NAME")
     private String name;
+    @Column(name = "C_START_TIME")
+    private String startTime;
+    @Column(name = "C_END_TIME")
+    private String endTime;
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name="C_CLASS_CODE")
     private List<ClassSecEntity> classSecList = new ArrayList<>();

@@ -1,16 +1,16 @@
 package com.antalex.persistence.entity;
 
-import com.antalex.model.enums.DealStatusType;
+import com.antalex.model.enums.OrderStatusType;
 import com.antalex.model.enums.EventType;
 import lombok.Data;
 
 import javax.persistence.*;
 import java.math.BigDecimal;
 
-@Table(name = "VW_RPT_DEAL_HISTORY")
+@Table(name = "VW_RPT_ORDER_HISTORY")
 @Data
 @Entity
-public class DealHistoryRpt implements History {
+public class OrderHistoryRpt implements History {
     @Id
     @Column(name = "ID")
     private Long id;
@@ -20,10 +20,10 @@ public class DealHistoryRpt implements History {
     private String classCode;
     @Column(name = "CODE")
     private String code;
-    @Column(name = "DEAL_TYPE")
+    @Column(name = "ORDER_TYPE")
     private EventType type;
     @Column(name = "PRICE")
     private BigDecimal price;
     @Column(name = "STATUS")
-    private DealStatusType status;
+    private OrderStatusType status;
 }

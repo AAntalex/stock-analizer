@@ -7,9 +7,9 @@ import com.antalex.holders.DataHolder;
 import com.antalex.holders.DateFormatHolder;
 import com.antalex.mapper.DtoMapper;
 import com.antalex.model.*;
-import com.antalex.model.enums.DealStatusType;
+import com.antalex.model.enums.OrderStatusType;
 import com.antalex.persistence.entity.AllHistoryRpt;
-import com.antalex.persistence.entity.DealHistoryRpt;
+import com.antalex.persistence.entity.OrderHistoryRpt;
 import com.antalex.persistence.entity.History;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,13 +48,8 @@ public class ChartFormer {
     }
 
     private Boolean checkTime(String uno) {
-        try {
-            String curTime = uno.substring(8, 14);
-            return curTime.compareTo(START_TIME) >= 0 && curTime.compareTo(END_TIME) <= 0;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
+        String curTime = DateFormatHolder.getTimeString(uno);
+        return curTime.compareTo(START_TIME) >= 0 && curTime.compareTo(END_TIME) <= 0;
     }
 
     private DataChart getDataChart(History history) {
@@ -143,19 +138,19 @@ public class ChartFormer {
         }
     }
 
-    public void addDealHistory(DealHistoryRpt history) {
+    public void addDealHistory(OrderHistoryRpt history) {
         DataChart dataChart = getDataChart(history);
         if (
                 (
-                        history.getStatus() == DealStatusType.OPEN ||
-                                history.getStatus() == DealStatusType.CLOSED
+                        history.getStatus() == OrderStatusType.OPEN ||
+                                history.getStatus() == OrderStatusType.CLOSED
                 ) &&
                         Optional.ofNullable(dataChart)
-                                .map(DataChart::getDealHistory)
+                                .map(DataChart::getOrderHistory)
                                 .map(it -> !it.containsKey(history.getUno()))
                                 .orElse(false))
         {
-            dataChart.getDealHistory().put(history.getUno(), history);
+            dataChart.getOrderHistory().put(history.getUno(), history);
         }
     }
 
@@ -168,7 +163,7 @@ public class ChartFormer {
                 addQuotes(history);
             }
             if (history.getTradeNum() != null) {
-                addPoint(addDeal(history));
+                addPoint(addOrder(history));
             }
 
 
@@ -346,7 +341,7 @@ public class ChartFormer {
                 });
     }
 
-    private DataChart addDeal(AllHistoryRpt history) {
+    private DataChart addOrder(AllHistoryRpt history) {
         if (Optional
                 .ofNullable(dataChartService.getCache().getMaxPrice())
                 .map(it -> it.compareTo(history.getPrice()) < 0)

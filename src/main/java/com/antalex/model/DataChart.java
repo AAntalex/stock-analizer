@@ -1,7 +1,7 @@
 package com.antalex.model;
 
 import com.antalex.persistence.entity.AllHistoryRpt;
-import com.antalex.persistence.entity.DealHistoryRpt;
+import com.antalex.persistence.entity.OrderHistoryRpt;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -21,7 +21,7 @@ public class DataChart {
     private DataChart prev;
     private HashMap<BigDecimal, QuoteGroup> quotes = new HashMap<>();
     private HashMap<String, Indicator> indicators = new HashMap<>();
-    private HashMap<String, DealHistoryRpt> dealHistory = new HashMap<>();
+    private HashMap<String, OrderHistoryRpt> orderHistory = new HashMap<>();
     private BigDecimal bidUp = BigDecimal.ZERO;
     private BigDecimal bidDown = BigDecimal.ZERO;
     private BigDecimal offerUp = BigDecimal.ZERO;

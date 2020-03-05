@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Optional;
 
 @AllArgsConstructor
 public class TrendLine {
@@ -14,7 +15,6 @@ public class TrendLine {
     private BigDecimal y2;
     private BigDecimal alpha;
     private BigDecimal betta;
-    private Boolean isActual = false;
 
     TrendLine(Integer x1, BigDecimal y1, Integer x2, BigDecimal y2, Boolean isHigh) {
         this.x1 = x1;
@@ -24,31 +24,31 @@ public class TrendLine {
     }
 
     public BigDecimal getAlpha() {
-        return y2.subtract(y1).divide(BigDecimal.valueOf(x2 - x1), DataHolder.PRECISION, RoundingMode.HALF_UP);
+        this.alpha = Optional.ofNullable(this.alpha)
+                .orElse(y2.subtract(y1).divide(BigDecimal.valueOf(x2 - x1), DataHolder.PRECISION, RoundingMode.HALF_UP));
+        return this.alpha;
     }
 
-    private BigDecimal getBetta() {
-        return y1.subtract(alpha.multiply(BigDecimal.valueOf(x1)));
+    public BigDecimal getBetta() {
+        this.betta = Optional.ofNullable(this.betta)
+                .orElse(y1.subtract(getAlpha().multiply(BigDecimal.valueOf(x1))));
+        return this.betta;
     }
 
     public BigDecimal f(Integer x) {
-        actual();
-        return alpha.multiply(BigDecimal.valueOf(x)).add(betta);
-    }
-
-    private void actual() {
-        if (!this.isActual) {
-            this.alpha = getAlpha();
-            this.betta = getBetta();
-        }
+        return getAlpha().multiply(BigDecimal.valueOf(x)).add(getBetta());
     }
 
     protected void setX1(Integer x, BigDecimal y) {
+        this.alpha = null;
+        this.betta = null;
         this.x1 = x;
         this.y1 = y;
     }
 
     protected void setX2(Integer x, BigDecimal y) {
+        this.alpha = null;
+        this.betta = null;
         this.x2 = x;
         this.y2 = y;
     }

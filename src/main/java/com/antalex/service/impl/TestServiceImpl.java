@@ -3,7 +3,7 @@ package com.antalex.service.impl;
 import com.antalex.model.AnaliseResultRow;
 import com.antalex.model.DataChart;
 import com.antalex.model.AnaliseResultTable;
-import com.antalex.model.enums.DealStatusType;
+import com.antalex.model.enums.OrderStatusType;
 import com.antalex.model.enums.EventType;
 import com.antalex.persistence.entity.*;
 import com.antalex.service.*;
@@ -27,8 +27,8 @@ public class TestServiceImpl implements TestService {
     private AnaliseResultTable deltaResultBuy;
     private AnaliseResultTable boolResultBuy;
 
-    private List<DealEntity> dealList;
-    private final DealService dealService;
+    private List<OrderEntity> orderList;
+    private final OrderService orderService;
     private final DataChartService dataChartService;
     private final EventEntity testEvent;
     private final AnaliseService analiseService;
@@ -38,12 +38,12 @@ public class TestServiceImpl implements TestService {
     Calendar calendar;
     BigDecimal totalSum = BigDecimal.valueOf(100000);
 
-    TestServiceImpl(DealService dealService,
+    TestServiceImpl(OrderService orderService,
                     DataChartService dataChartService,
                     EventService eventService,
                     AnaliseService analiseService)
     {
-        this.dealService = dealService;
+        this.orderService = orderService;
         this.dataChartService = dataChartService;
         this.analiseService = analiseService;
         this.eventService = eventService;
@@ -59,7 +59,7 @@ public class TestServiceImpl implements TestService {
         deltaResultBuy = new AnaliseResultTable();
         boolResultBuy = new AnaliseResultTable();
 
-        dealList = new ArrayList<>();
+        orderList = new ArrayList<>();
     }
 
     @Override
@@ -82,7 +82,7 @@ public class TestServiceImpl implements TestService {
         analiseService.saveCorrelations(boolResultBuy, "Result/CORR_BUY_BOOL.csv", 1);
         analiseService.saveCorrelations(deltaResultBuy, "Result/CORR_BUY_DELTA.csv", steps);
 
-        log.info("Result Saved k = " + k + " size " + dealList.size() + " all " + dataChartService.getCache().getAllHistory().size());
+        log.info("Result Saved k = " + k + " size " + orderList.size() + " all " + dataChartService.getCache().getAllHistory().size());
     }
 
     @Override
@@ -96,7 +96,7 @@ public class TestServiceImpl implements TestService {
 
         eventService.applyAll(data);
 
-        dealService.findAllByStatus(DealStatusType.PREPARE)
+        orderService.findAllByStatus(OrderStatusType.PREPARE)
                 .forEach(it -> setPrice(it, data.getHistory()));
 
         dataChartService.stopTrace();
@@ -115,25 +115,25 @@ public class TestServiceImpl implements TestService {
 
         dataChartService.startTrace();
 
-        getDealList(DealStatusType.PREPARE)
+        getOrderList(OrderStatusType.PREPARE)
                 .forEach(it -> setPrice(it, data.getHistory()));
 
-        dealList.addAll(getDealList(DealStatusType.OPEN)
+        orderList.addAll(getOrderList(OrderStatusType.OPEN)
                 .stream()
-                .map(it -> dealService.procLimit(it, data, true))
+                .map(it -> orderService.procLimit(it, data, true))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList()));
 
-        dealList
+        orderList
                 .stream()
                 .filter(it ->
-                        it.getStatus() == DealStatusType.CLOSED &&
+                        it.getStatus() == OrderStatusType.CLOSED &&
                                 (
                                         it.getType() == EventType.BUY ||
                                                 it.getType() == EventType.SELL
                                 )
                 )
-                .sorted(Comparator.comparing(DealEntity::getUno))
+                .sorted(Comparator.comparing(OrderEntity::getUno))
                 .forEach(it -> {
                     if (it.getType() == EventType.SELL) {
                         setBoolResult(it, boolResultSell);
@@ -146,15 +146,15 @@ public class TestServiceImpl implements TestService {
                     }
                 });
 
-        dealList = dealList
+        orderList = orderList
                 .stream()
-                .filter(it -> it.getStatus() != DealStatusType.CLOSED)
+                .filter(it -> it.getStatus() != OrderStatusType.CLOSED)
                 .collect(Collectors.toList());
 
         List<BigDecimal> boolTriggerValues = getCheckValues(data, testEvent);
         List<BigDecimal> deltaTriggerValues = getDeltaValues(data, testEvent);
 
-        DealEntity deal = dealService.newDeal(
+        OrderEntity order = orderService.newOrder(
                 data,
                 testEvent,
                 EventType.BUY,
@@ -163,11 +163,11 @@ public class TestServiceImpl implements TestService {
                 "",
                 null
         );
-        deal.setBoolTriggerValues(boolTriggerValues);
-        deal.setDeltaTriggerValues(deltaTriggerValues);
-        dealList.add(deal);
+        order.setBoolTriggerValues(boolTriggerValues);
+        order.setDeltaTriggerValues(deltaTriggerValues);
+        orderList.add(order);
 
-        deal = dealService.newDeal(
+        order = orderService.newOrder(
                 data,
                 testEvent,
                 EventType.SELL,
@@ -176,9 +176,9 @@ public class TestServiceImpl implements TestService {
                 "",
                 null
         );
-        deal.setBoolTriggerValues(boolTriggerValues);
-        deal.setDeltaTriggerValues(deltaTriggerValues);
-        dealList.add(deal);
+        order.setBoolTriggerValues(boolTriggerValues);
+        order.setDeltaTriggerValues(deltaTriggerValues);
+        orderList.add(order);
 
         k = k + 2;
 
@@ -202,36 +202,36 @@ public class TestServiceImpl implements TestService {
         }
     }
 
-    private void setBoolResult(DealEntity deal, AnaliseResultTable analiseResultTable) {
+    private void setBoolResult(OrderEntity order, AnaliseResultTable analiseResultTable) {
         if (analiseResultTable.getHeaders() == null) {
             analiseResultTable.setHeaders(getCheckHeaders(testEvent));
         }
         analiseResultTable.getData().add(
                 new AnaliseResultRow(
-                        deal.getUno(),
-                        deal.getResult().compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO,
-                        deal.getBoolTriggerValues()
+                        order.getUno(),
+                        order.getResult().compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ONE : BigDecimal.ZERO,
+                        order.getBoolTriggerValues()
                 )
         );
     }
 
-    private void setDeltaResult(DealEntity deal, AnaliseResultTable analiseResultTable) {
+    private void setDeltaResult(OrderEntity order, AnaliseResultTable analiseResultTable) {
         if (analiseResultTable.getHeaders() == null) {
             analiseResultTable.setHeaders(getDeltaHeaders(testEvent));
         }
         analiseResultTable.getData().add(
                 new AnaliseResultRow(
-                        deal.getUno(),
-                        deal.getResult(),
-                        deal.getDeltaTriggerValues()
+                        order.getUno(),
+                        order.getResult(),
+                        order.getDeltaTriggerValues()
                 )
         );
     }
 
-    private void setTraceResult(DealEntity deal, AnaliseResultTable analiseResultTable) {
+    private void setTraceResult(OrderEntity order, AnaliseResultTable analiseResultTable) {
         if (analiseResultTable.getHeaders() == null) {
             analiseResultTable.setHeaders(
-                    deal.getTraceValues()
+                    order.getTraceValues()
                             .stream()
                             .map(TraceValueEntity::getCode)
                             .collect(Collectors.toList())
@@ -239,9 +239,9 @@ public class TestServiceImpl implements TestService {
         }
         analiseResultTable.getData().add(
                 new AnaliseResultRow(
-                        deal.getUno(),
-                        deal.getResult(),
-                        deal.getTraceValues()
+                        order.getUno(),
+                        order.getResult(),
+                        order.getTraceValues()
                                 .stream()
                                 .map(TraceValueEntity::getValue)
                                 .collect(Collectors.toList())
@@ -249,49 +249,49 @@ public class TestServiceImpl implements TestService {
         );
     }
 
-    private List<DealEntity> getDealList(DealStatusType dealStatusType) {
-        return dealList
+    private List<OrderEntity> getOrderList(OrderStatusType orderStatusType) {
+        return orderList
                 .stream()
-                .filter(it -> it.getStatus() == dealStatusType)
+                .filter(it -> it.getStatus() == orderStatusType)
                 .collect(Collectors.toList());
     }
 
-    private void setPrice(DealEntity deal, AllHistoryRpt history) {
-        if (deal.getType() == EventType.SELL ||
-                (deal.getType() == EventType.TAKE_PROFIT ||
-                        deal.getType() == EventType.STOP_LIMIT) &&
-                        deal.getMain().getType() == EventType.BUY)
+    private void setPrice(OrderEntity order, AllHistoryRpt history) {
+        if (order.getType() == EventType.SELL ||
+                (order.getType() == EventType.TAKE_PROFIT ||
+                        order.getType() == EventType.STOP_LIMIT) &&
+                        order.getMain().getType() == EventType.BUY)
         {
-            dealService.setPrice(deal, getSellPrice(deal, history), history.getUno());
+            orderService.setPrice(order, getSellPrice(order, history), history.getUno());
         } else {
-            dealService.setPrice(deal, getBuyPrice(deal, history), history.getUno());
+            orderService.setPrice(order, getBuyPrice(order, history), history.getUno());
         }
     }
 
-    private BigDecimal getBuyPrice(DealEntity deal, AllHistoryRpt history) {
+    private BigDecimal getBuyPrice(OrderEntity order, AllHistoryRpt history) {
         return Optional.ofNullable(history)
                 .filter(AllHistoryRpt::getBidFlag)
                 .filter(it -> new BigDecimal(it.getUno().substring(0, 14))
-                        .subtract(new BigDecimal(deal.getUno().substring(0, 14)))
+                        .subtract(new BigDecimal(order.getUno().substring(0, 14)))
                         .compareTo(TIME_OUT) >= 0)
                 .map(AllHistoryRpt::getPrice)
                 .filter(
-                        it -> Optional.ofNullable(deal.getLimitPrice())
+                        it -> Optional.ofNullable(order.getLimitPrice())
                                 .map(limit -> limit.compareTo(it) >= 0)
                                 .orElse(true)
                 )
                 .orElse(null);
     }
 
-    private BigDecimal getSellPrice(DealEntity deal, AllHistoryRpt history) {
+    private BigDecimal getSellPrice(OrderEntity order, AllHistoryRpt history) {
         return Optional.ofNullable(history)
                 .filter(it -> !it.getBidFlag())
                 .filter(it -> new BigDecimal(it.getUno().substring(0, 14))
-                        .subtract(new BigDecimal(deal.getUno().substring(0, 14)))
+                        .subtract(new BigDecimal(order.getUno().substring(0, 14)))
                         .compareTo(TIME_OUT) >= 0)
                 .map(AllHistoryRpt::getPrice)
                 .filter(
-                        it -> Optional.ofNullable(deal.getLimitPrice())
+                        it -> Optional.ofNullable(order.getLimitPrice())
                                 .map(limit -> limit.compareTo(it) <= 0)
                                 .orElse(true)
                 )

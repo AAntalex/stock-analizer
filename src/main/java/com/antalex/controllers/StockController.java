@@ -5,10 +5,10 @@ import com.antalex.dto.TradeClassesDto;
 import com.antalex.mapper.DtoMapper;
 import com.antalex.model.CacheDadaChart;
 import com.antalex.persistence.entity.QuotesRpt;
-import com.antalex.persistence.repository.TradeClassesRepository;
 import com.antalex.service.ChartService;
 import com.antalex.persistence.entity.AllTradesRpt;
 import com.antalex.service.DataChartService;
+import com.antalex.service.TradeClassesService;
 import com.antalex.service.impl.AllTradesService;
 import com.antalex.service.impl.QuotesService;
 import lombok.AllArgsConstructor;
@@ -27,7 +27,7 @@ public class StockController {
     private AllTradesService allTradesService;
     private QuotesService quotesService;
     private ChartService chartService;
-    private TradeClassesRepository tradeClassesRepository;
+    private TradeClassesService tradeClassesService;
     private DtoMapper dtoMapper;
 
     private DataChartService dataChartService;
@@ -80,6 +80,6 @@ public class StockController {
 
     @RequestMapping(method = RequestMethod.GET, path = "/classes")
     public List<TradeClassesDto> getClasses () {
-        return dtoMapper.map(tradeClassesRepository.findAll(), TradeClassesDto.class);
+        return dtoMapper.map(tradeClassesService.findAll(), TradeClassesDto.class);
     }
 }

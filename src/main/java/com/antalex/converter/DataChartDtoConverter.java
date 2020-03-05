@@ -73,7 +73,7 @@ public class DataChartDtoConverter implements DtoConverter<DataChart, DataChartD
                         .sorted(Comparator.comparing(Indicator::getCode))
                         .collect(Collectors.toList())
                 )
-                .dealHistory(dtoMapper.mapToList(entity.getDealHistory(), DealHistoryDto.class))
+                .orderHistory(dtoMapper.mapToList(entity.getOrderHistory(), OrderHistoryDto.class))
                 .bidUp(entity.getBidUp())
                 .bidDown(entity.getBidDown())
                 .offerUp(entity.getOfferUp())

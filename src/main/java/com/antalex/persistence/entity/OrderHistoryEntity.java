@@ -1,6 +1,6 @@
 package com.antalex.persistence.entity;
 
-import com.antalex.model.enums.DealStatusType;
+import com.antalex.model.enums.OrderStatusType;
 import com.antalex.model.enums.EventType;
 import lombok.Data;
 
@@ -8,10 +8,10 @@ import javax.persistence.*;
 import java.math.BigDecimal;
 import java.util.Date;
 
-@Table(name = "Z#AAA_DEAL_HISTORY")
+@Table(name = "Z#AAA_ORDER_HIST")
 @Data
 @Entity
-public class DealHistoryEntity {
+public class OrderHistoryEntity {
     @Id
     @Column(name = "ID")
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq_id")
@@ -21,12 +21,12 @@ public class DealHistoryEntity {
     private Date date;
     @Column(name = "C_UNO")
     private String uno;
-    @Column(name = "C_DEAL_TYPE")
+    @Column(name = "C_ORDER_TYPE")
     private EventType type;
     @Column(name = "C_PRICE")
     private BigDecimal price;
     @Column(name = "C_STATUS")
-    private DealStatusType status;
-    @Column(name = "C_DEAL")
-    private Long deal;
+    private OrderStatusType status;
+    @Column(name = "C_ORDER_REF")
+    private Long order;
 }

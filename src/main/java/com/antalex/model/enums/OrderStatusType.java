@@ -3,7 +3,7 @@ package com.antalex.model.enums;
 /**
  * Статус заявки
  */
-public enum DealStatusType {
+public enum OrderStatusType {
     /**
      * Подготовка
      */

@@ -1,6 +1,7 @@
 package com.antalex.service.impl;
 
 import com.antalex.holders.DataHolder;
+import com.antalex.holders.DateFormatHolder;
 import com.antalex.model.*;
 import com.antalex.model.enums.StatusType;
 import com.antalex.model.enums.VariableType;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 public class DataChartServiceImpl implements DataChartService {
     private static final String TREND = "TREND";
     private static final String ALPHA = "ALPHA";
+    private static final String BETTA = "BETTA";
     private static final String WEIGHT = "WEIGHT";
     private static final String PREV = "_PREV";
     private CacheDadaChart cache;
@@ -196,7 +198,7 @@ public class DataChartServiceImpl implements DataChartService {
             case TIME: {
                 return Optional.ofNullable(data.getHistory())
                         .map(AllHistoryRpt::getUno)
-                        .map(it -> new BigDecimal(it.substring(8, 14)))
+                        .map(it -> new BigDecimal(DateFormatHolder.getTimeString(it)))
                         .orElse(BigDecimal.ZERO);
             }
             default: {
@@ -287,6 +289,7 @@ public class DataChartServiceImpl implements DataChartService {
         String trendCode = null;
         Boolean isHigh = null;
         Boolean isAlpha = false;
+        Boolean isBetta = false;
         Boolean isWeight = false;
         int offset = 0;
         int period = 0;
@@ -306,6 +309,10 @@ public class DataChartServiceImpl implements DataChartService {
                 isAlpha = true;
                 continue;
             }
+            if (BETTA.equals(variablePart)) {
+                isBetta = true;
+                continue;
+            }
             if (WEIGHT.equals(variablePart)) {
                 isWeight = true;
                 continue;
@@ -321,6 +328,9 @@ public class DataChartServiceImpl implements DataChartService {
         }
         if (isAlpha) {
             return isHigh ? trend.getHigh().getAlpha() : trend.getLow().getAlpha();
+        }
+        if (isBetta) {
+            return isHigh ? trend.getHigh().getBetta() : trend.getLow().getBetta();
         }
         if (isWeight) {
             return isHigh ? trend.getHighWeight() : trend.getLowWeight();
