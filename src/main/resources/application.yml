@@ -2,7 +2,7 @@ database:
   driver: oracle.jdbc.driver.OracleDriver
   url: jdbc:oracle:thin:@localhost:1521/eks
   user: IBS
-  pass: IBSO
+  pass: IBS
 
 hibernate:
   dialect: org.hibernate.dialect.Oracle10gDialect

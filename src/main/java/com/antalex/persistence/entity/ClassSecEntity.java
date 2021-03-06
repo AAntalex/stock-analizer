@@ -12,6 +12,8 @@ import javax.persistence.Table;
 @Entity
 public class ClassSecEntity {
     @Id
+    @Column(name = "ID")
+    private Long id;
     @Column(name = "C_CODE")
     private String code;
     @Column(name = "C_SHORTNAME")
@@ -24,6 +26,4 @@ public class ClassSecEntity {
     private Integer scale;
     @Column(name = "C_LOTSIZE")
     private Integer lotSize;
-    @Column(name = "ID")
-    private Long id;
 }

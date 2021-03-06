@@ -1,6 +1,7 @@
 package com.antalex.service.impl;
 
 import com.antalex.holders.DataHolder;
+import com.antalex.holders.DateFormatHolder;
 import com.antalex.model.*;
 import com.antalex.model.enums.IndicatorType;
 import com.antalex.persistence.entity.IndicatorEntity;
@@ -31,6 +32,10 @@ public class IndicatorServiceImpl implements IndicatorService {
     private static final String SUM_FUNCTION = "SUM";
     private static final String HIGH = "HIGH";
     private static final String LOW = "LOW";
+    private static final String MAX_PRICE = "MAX_PRICE";
+    private static final String MIN_PRICE = "MIN_PRICE";
+    private static final String MAX_DAY_PRICE = "MAX_DAY_PRICE";
+    private static final String MIN_DAY_PRICE = "MIN_DAY_PRICE";
     private static final String TREND = "TREND";
     private static final String TARGET_BID = "TARGET_BID";
     private static final String TARGET_OFFER = "TARGET_OFFER";
@@ -320,6 +325,54 @@ public class IndicatorServiceImpl implements IndicatorService {
             }
             case INDEX: {
                 return new BigDecimal(index);
+            }
+            case MAX_PRICE: {
+                return DataHolder.dataList().stream()
+                        .filter(it ->
+                                Objects.nonNull(it.getData()) &&
+                                        it.getDate().compareTo(data.getDate()) <= 0
+                        )
+                        .map(DataChart::getData)
+                        .map(DataGroup::getCandle)
+                        .map(Candlestick::getHigh)
+                        .reduce(BigDecimal.ZERO, BigDecimal::max);
+            }
+            case MIN_PRICE: {
+                return DataHolder.dataList().stream()
+                        .filter(it ->
+                                Objects.nonNull(it.getData()) &&
+                                        it.getDate().compareTo(data.getDate()) <= 0
+                        )
+                        .map(DataChart::getData)
+                        .map(DataGroup::getCandle)
+                        .map(Candlestick::getLow)
+                        .reduce(data.getData().getCandle().getOpen(), BigDecimal::min);
+            }
+            case MAX_DAY_PRICE: {
+                Date startDate = DateFormatHolder.setTimeToDate(data.getDate(), "000000");
+                return DataHolder.dataList().stream()
+                        .filter(it ->
+                                Objects.nonNull(it.getData()) &&
+                                        it.getDate().compareTo(startDate) >= 0 &&
+                                        it.getDate().compareTo(data.getDate()) <= 0
+                        )
+                        .map(DataChart::getData)
+                        .map(DataGroup::getCandle)
+                        .map(Candlestick::getHigh)
+                        .reduce(BigDecimal.ZERO, BigDecimal::max);
+            }
+            case MIN_DAY_PRICE: {
+                Date startDate = DateFormatHolder.setTimeToDate(data.getDate(), "000000");
+                return DataHolder.dataList().stream()
+                        .filter(it ->
+                                Objects.nonNull(it.getData()) &&
+                                        it.getDate().compareTo(startDate) >= 0 &&
+                                        it.getDate().compareTo(data.getDate()) <= 0
+                        )
+                        .map(DataChart::getData)
+                        .map(DataGroup::getCandle)
+                        .map(Candlestick::getLow)
+                        .reduce(data.getData().getCandle().getOpen(), BigDecimal::min);
             }
             default: {
                 if (

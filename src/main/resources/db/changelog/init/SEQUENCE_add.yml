@@ -1,0 +1,12 @@
+databaseChangeLog:
+- changeSet:
+    id: '06/06/2021 20:00:00'
+    author: Antalex
+    changes:
+    - createSequence:
+        sequenceName: ORDER_SEQ
+        schemaName:  IBS
+        minValue: 1
+        maxValue: 2147483647
+        incrementBy: 1
+        startValue:  1

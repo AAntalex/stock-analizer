@@ -2,6 +2,7 @@ package com.antalex.controllers;
 
 import com.antalex.dto.DataChartDto;
 import com.antalex.holders.DataChartHolder;
+import com.antalex.holders.DateFormatHolder;
 import com.antalex.service.ChartService;
 import com.antalex.service.OrderService;
 import com.antalex.service.TestService;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import java.util.*;
 
 @RestController
 @AllArgsConstructor
@@ -32,12 +33,29 @@ public class TestController {
             ,   @RequestParam(value = "approximation", defaultValue = "0") int interval
     ) {
         DataChartHolder.setTest(true);
-        chartService.init();
-        orderService.startBatch(100);
-        List<DataChartDto>  result = chartService.query(secClass, sDateBegin, sDateEnd, stockClass, interval);
-        orderService.stopBatch();
+        DateFormatHolder.splitDate(sDateBegin, sDateEnd, "0000000", "235959", Calendar.MONTH)
+                .forEach(
+                        monthInterval -> {
+                            Date prevDay = DateFormatHolder.getNextDate(
+                                    DateFormatHolder.getDateFromString(monthInterval.getKey()),
+                                    Calendar.DATE,
+                                    -1);
+
+                            chartService.init();
+                            orderService.startBatch(100);
+                            DateFormatHolder.setApproximation(0);
+                            chartService.query(
+                                    secClass,
+                                    DateFormatHolder.getStringFromDate(prevDay),
+                                    monthInterval.getValue(),
+                                    stockClass,
+                                    interval
+                            );
+                            orderService.stopBatch();
+                        });
+
         log.info("AAA TEST is Done");
-        return result;
+        return Collections.emptyList();
 /*
 
         DataChartHolder.setCalcCorr(true);

@@ -159,9 +159,11 @@ public class ChartFormer {
         Map<String, AllHistoryRpt> allHistory = dataChartService.getCache().getAllHistory();
         if (checkTime(uno) && !allHistory.containsKey(uno)) {
             allHistory.put(uno, history);
+/*
             if (history.getQuotes() != null) {
                 addQuotes(history);
             }
+*/
             if (history.getTradeNum() != null) {
                 addPoint(addOrder(history));
             }
@@ -402,7 +404,7 @@ public class ChartFormer {
         return dtoMapper.map(
                 dataChartService.getCache().getData().values()
                         .stream()
-                        .filter(it -> it.getData() != null && (dateBegin == null || it.getDate().compareTo(dateBegin) >= 0)
+                        .filter(it -> Objects.nonNull(it.getData()) && (dateBegin == null || it.getDate().compareTo(dateBegin) >= 0)
                                 && (dateEnd == null || it.getDate().compareTo(dateEnd) <= 0))
                         .sorted(Comparator.comparing(DataChart::getDate)), DataChartDto.class);
     }
@@ -411,11 +413,11 @@ public class ChartFormer {
         DataHolder.setFirstData(dataChartService.getCache().getFirstData());
 
 
-        setTrend(0, 0);
-        setTrend(60, 0);
-        setTrend(120, 0);
-        setTrend(240, 0);
-        setTrend(480, 0);
+        setTrend(0, 5);
+        setTrend(60, 5);
+        setTrend(120, 5);
+        setTrend(240, 5);
+        setTrend(480, 5);
 
 
         return getDataList(DateFormatHolder.getDateFromString(sDateBegin), DateFormatHolder.getDateFromString(sDateEnd));

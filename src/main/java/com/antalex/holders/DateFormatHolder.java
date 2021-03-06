@@ -1,8 +1,10 @@
 package com.antalex.holders;
 
+import com.antalex.persistence.entity.AllHistoryRpt;
 import javafx.util.Pair;
 import lombok.extern.slf4j.Slf4j;
 
+import java.math.BigDecimal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -23,11 +25,12 @@ public class DateFormatHolder {
     }
 
     public static Integer getApproximation() {
-        return approximationThreadLocal.get();
+        return Optional.ofNullable(approximationThreadLocal.get()).orElse(0);
     }
 
     public static void setApproximation(Integer approximation) {
-        if (approximationThreadLocal.get() != null && approximationThreadLocal.get() == approximation || approximation < 0 || approximation > 10) {
+        approximation = Optional.ofNullable(approximation).orElse(0);
+        if (getApproximation().equals(approximation) || approximation < 0 || approximation > 10) {
             return;
         }
         approximationThreadLocal.set(approximation);
@@ -43,7 +46,12 @@ public class DateFormatHolder {
             return null;
         }
         try {
-            return dateFormatThreadLocal.get().parse(sDate.substring(0, 14 - approximationThreadLocal.get()));
+            return dateFormatThreadLocal.get().parse(
+                    sDate.substring(
+                            0,
+                            Integer.min(14 - getApproximation(), sDate.length())
+                    )
+            );
         } catch (ParseException e) {
             log.error("Не верный формат даты " + sDate);
             e.printStackTrace();
@@ -62,7 +70,8 @@ public class DateFormatHolder {
     public static List<Pair<String, String>> splitDate(String sDateBegin,
                                                        String sDateEnd,
                                                        String startTime,
-                                                       String endTime)
+                                                       String endTime,
+                                                       int calendarType)
     {
         Integer oldApproximation = getApproximation();
         setApproximation(0);
@@ -71,13 +80,13 @@ public class DateFormatHolder {
         Date dateBegin = getDateFromString(sDateBegin);
         String startTimeString = getTimeString(sDateBegin);
         if (startTimeString.compareTo(endTime) > 0) {
-            dateBegin = setTimeToDate(getNextDate(dateBegin), startTime);
+            dateBegin = setTimeToDate(getNextDate(dateBegin, Calendar.DATE, 1), startTime);
         }
         if (startTimeString.compareTo(startTime) < 0) {
             dateBegin = setTimeToDate(dateBegin, startTime);
         }
         Date dateEnd = DateFormatHolder.getDateFromString(sDateEnd);
-        Date nextDate = getMinDate(setTimeToDate(dateBegin, endTime), dateEnd);
+        Date nextDate = getMinDate(getEndPeriod(dateBegin, endTime, calendarType), dateEnd);
         while (Objects.nonNull(nextDate) && dateBegin.compareTo(nextDate) < 0) {
             result.add(
                     new Pair<>(
@@ -85,12 +94,12 @@ public class DateFormatHolder {
                             DateFormatHolder.getStringFromDate(nextDate)
                     )
             );
-            dateBegin = getNextDate(dateBegin);
+            dateBegin = getNextDate(dateBegin, calendarType, 1);
             if (startTimeString.compareTo(startTime) > 0) {
                 dateBegin = setTimeToDate(dateBegin, startTime);
                 startTimeString = startTime;
             }
-            nextDate = getMinDate(setTimeToDate(dateBegin, endTime), dateEnd);
+            nextDate = getMinDate(getEndPeriod(dateBegin, endTime, calendarType), dateEnd);
         }
         if (Objects.isNull(nextDate)) {
             result.add(
@@ -102,14 +111,28 @@ public class DateFormatHolder {
         return result;
     }
 
-    private static Date getNextDate(Date date) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(date);
-        calendar.add(Calendar.DATE, 1);
-        return calendar.getTime();
+    private static Date getEndPeriod(Date date, String endTime, int calendarType) {
+        if (calendarType == Calendar.DATE) {
+            return setTimeToDate(date, endTime);
+        }
+        return setTimeToDate(
+                getNextDate(
+                        getNextDate(date, calendarType, 1),
+                        Calendar.DATE,
+                        -1
+                ),
+                endTime
+        );
     }
 
-    private static Date setTimeToDate(Date date, String time) {
+    public static Date setTimeToDate(Date date, String time) {
         return getDateFromString(getStringFromDate(date).substring(0, 8).concat(time));
+    }
+
+    public static Date getNextDate(Date date, int type, int offset) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(date);
+        calendar.add(type, offset);
+        return calendar.getTime();
     }
 }

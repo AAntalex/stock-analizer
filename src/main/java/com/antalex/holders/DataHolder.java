@@ -31,6 +31,10 @@ public class DataHolder {
         return data(period().intValue());
     }
 
+    public static List<DataChart> dataList() {
+        return dataThreadLocal.get();
+    }
+
     public static DataChart data(int index) {
         if (dataThreadLocal.get().isEmpty()) {
             throw new IllegalStateException(EMPTY_DATA);

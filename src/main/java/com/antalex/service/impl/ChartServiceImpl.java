@@ -34,7 +34,8 @@ public class ChartServiceImpl implements ChartService {
         DateFormatHolder.splitDate(
                 sDateBegin, sDateEnd,
                 Optional.ofNullable(tradeClassesEntity.getStartTime()).orElse(START_TIME),
-                Optional.ofNullable(tradeClassesEntity.getEndTime()).orElse(END_TIME)
+                Optional.ofNullable(tradeClassesEntity.getEndTime()).orElse(END_TIME),
+                Calendar.DATE
         )
                 .forEach(interval -> {
                     allHistoryService.query(secClass, interval.getKey(), interval.getValue(), stockClass)

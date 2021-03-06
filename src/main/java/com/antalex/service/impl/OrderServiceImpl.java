@@ -8,6 +8,7 @@ import com.antalex.model.enums.OrderStatusType;
 import com.antalex.model.enums.EventType;
 import com.antalex.model.enums.RateType;
 import com.antalex.persistence.entity.*;
+import com.antalex.persistence.repository.ClassSecRepository;
 import com.antalex.persistence.repository.OrderHistoryRepository;
 import com.antalex.persistence.repository.OrderRepository;
 import com.antalex.service.DataChartService;
@@ -29,18 +30,21 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final DataChartService dataChartService;
     private final TariffPlanService tariffPlanService;
+    private final ClassSecRepository classSecRepository;
     private final OrderHistoryRepository orderHistoryRepository;
     private final Map<String, OrderEntity> cacheOrders;
 
     OrderServiceImpl(OrderRepository orderRepository,
                      DataChartService dataChartService,
                      TariffPlanService tariffPlanService,
-                     OrderHistoryRepository orderHistoryRepository)
+                     OrderHistoryRepository orderHistoryRepository,
+                     ClassSecRepository classSecRepository)
     {
         this.orderRepository = orderRepository;
         this.dataChartService = dataChartService;
         this.tariffPlanService = tariffPlanService;
         this.orderHistoryRepository = orderHistoryRepository;
+        this.classSecRepository = classSecRepository;
         this.cacheOrders =
                 orderRepository.findAllByStatusNot(OrderStatusType.CLOSED).stream()
                         .collect(Collectors.toMap(this::getHashCode, it -> it));
@@ -170,9 +174,7 @@ public class OrderServiceImpl implements OrderService {
         order.setEvent(event);
         order.setLimitPrice(price);
         order.setUno(data.getHistory().getUno());
-        order.setSecId(data.getHistory().getSecId());
-        order.setLotSize(data.getHistory().getLotSize());
-        order.setScale(data.getHistory().getScale());
+        order.setSec(classSecRepository.findById(data.getHistory().getSecId()).orElse(null));
         order.setVolume(volume);
         order.setCaption(caption);
         order.setMain(main);
@@ -313,7 +315,7 @@ public class OrderServiceImpl implements OrderService {
                 .map(it ->
                         it
                                 .multiply(new BigDecimal(order.getVolume()))
-                                .multiply(new BigDecimal(order.getLotSize()))
+                                .multiply(new BigDecimal(order.getSec().getLotSize()))
                 )
                 .orElse(null);
     }

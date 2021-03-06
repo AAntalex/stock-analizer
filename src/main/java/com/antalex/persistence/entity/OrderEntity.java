@@ -1,5 +1,6 @@
 package com.antalex.persistence.entity;
 
+import com.antalex.model.enums.ExecType;
 import com.antalex.model.enums.OrderStatusType;
 import com.antalex.model.enums.EventType;
 import lombok.Data;
@@ -7,6 +8,7 @@ import lombok.Data;
 import javax.persistence.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Table(name = "Z#AAA_ORDER")
@@ -18,12 +20,19 @@ public class OrderEntity {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq_id")
     @SequenceGenerator(name = "seq_id", sequenceName = "SEQ_ID")
     private Long id;
-    @Column(name = "C_SEC_REF")
-    private Long secId;
-    @Column(name = "C_LOT_SIZE")
-    private Integer lotSize;
-    @Column(name = "C_SCALE")
-    private Integer scale;
+    @Column(name = "C_ORDER_NUM")
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "ORDER_SEQ")
+    @SequenceGenerator(name = "ORDER_SEQ", sequenceName = "ORDER_SEQ")
+    private Long orderNum;
+    @Column(name = "C_DATE_TIME")
+    private Date date;
+    @Column(name = "C_TRANS_ID")
+    private String transId;
+    @Column(name = "C_EXEC_TYPE")
+    private ExecType execType;
+    @OneToOne
+    @JoinColumn(name = "C_SEC_REF")
+    private ClassSecEntity sec;
     @Column(name = "C_ORDER_TYPE")
     private EventType type;
     @Column(name = "C_UNO")
