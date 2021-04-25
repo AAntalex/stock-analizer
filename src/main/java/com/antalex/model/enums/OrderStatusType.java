@@ -20,4 +20,12 @@ public enum OrderStatusType {
      * Закрыта
      */
     CLOSED,
+    /**
+     * Активна
+     */
+    ACTIVE,
+    /**
+     * Снята
+     */
+    CANCELED,
 }

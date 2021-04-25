@@ -2,6 +2,7 @@ package com.antalex.persistence.repository;
 
 import com.antalex.model.enums.OrderStatusType;
 import com.antalex.model.enums.EventType;
+import com.antalex.persistence.entity.ClassSecEntity;
 import com.antalex.persistence.entity.OrderEntity;
 import com.antalex.persistence.entity.EventEntity;
 import org.springframework.data.repository.CrudRepository;
@@ -13,5 +14,11 @@ public interface OrderRepository extends CrudRepository<OrderEntity, Long> {
     List<OrderEntity> findAllByEventAndStatus(EventEntity event, OrderStatusType status);
     List<OrderEntity> findAllByEventAndStatusNot(EventEntity event, OrderStatusType status);
     List<OrderEntity> findAllByStatusNot(OrderStatusType status);
-    List<OrderEntity> findAllByEventAndStatusAndTypeAndResultIsNotNullOrderByUno(EventEntity event, OrderStatusType status, EventType type);
+    List<OrderEntity> findAllBySecAndTypeAndStatusAndUnoLessThan
+            (
+                    ClassSecEntity sec
+                    , EventType type
+                    , OrderStatusType status
+                    , String uno
+            );
 }

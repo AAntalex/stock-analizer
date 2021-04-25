@@ -11,5 +11,5 @@ public enum StatusType {
     /**
      * Отключен
      */
-    DISABLEЫ,
+    DISABLED,
 }

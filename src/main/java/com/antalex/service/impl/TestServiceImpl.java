@@ -35,8 +35,8 @@ public class TestServiceImpl implements TestService {
     private final EventService eventService;
 
     private int k = 0;
-    Calendar calendar;
-    BigDecimal totalSum = BigDecimal.valueOf(100000);
+    private Calendar calendar;
+    private BigDecimal totalSum = BigDecimal.valueOf(100000);
 
     TestServiceImpl(OrderService orderService,
                     DataChartService dataChartService,
@@ -97,8 +97,9 @@ public class TestServiceImpl implements TestService {
         eventService.applyAll(data);
 
         orderService.findAllByStatus(OrderStatusType.PREPARE)
-                .forEach(it -> setPrice(it, data.getHistory()));
+                .forEach(it -> process(it, data.getHistory()));
 
+        orderService.processAll();
         dataChartService.stopTrace();
 
         printLog(data);
@@ -116,7 +117,7 @@ public class TestServiceImpl implements TestService {
         dataChartService.startTrace();
 
         getOrderList(OrderStatusType.PREPARE)
-                .forEach(it -> setPrice(it, data.getHistory()));
+                .forEach(it -> process(it, data.getHistory()));
 
         orderList.addAll(getOrderList(OrderStatusType.OPEN)
                 .stream()
@@ -256,46 +257,47 @@ public class TestServiceImpl implements TestService {
                 .collect(Collectors.toList());
     }
 
-    private void setPrice(OrderEntity order, AllHistoryRpt history) {
-        if (order.getType() == EventType.SELL ||
-                (order.getType() == EventType.TAKE_PROFIT ||
-                        order.getType() == EventType.STOP_LIMIT) &&
-                        order.getMain().getType() == EventType.BUY)
-        {
-            orderService.setPrice(order, getSellPrice(order, history), history.getUno());
-        } else {
-            orderService.setPrice(order, getBuyPrice(order, history), history.getUno());
+    private void process(OrderEntity order, AllHistoryRpt history) {
+        Optional.ofNullable(history)
+                .filter(it -> it.getBidFlag().compareTo(
+                        order.getType() == EventType.SELL
+                                || (
+                                        order.getType() == EventType.TAKE_PROFIT
+                                                || order.getType() == EventType.STOP_LIMIT)
+                                && order.getMain().getType() == EventType.BUY) != 0
+                )
+                .filter(it -> new BigDecimal(it.getUno().substring(0, 14))
+                        .subtract(new BigDecimal(order.getUno().substring(0, 14)))
+                        .compareTo(TIME_OUT) >= 0)
+                .filter(
+                        it -> Optional.ofNullable(order.getLimitPrice())
+                                .map(limit -> it.getBidFlag() && limit.compareTo(it.getPrice()) >= 0
+                                        || !it.getBidFlag() && limit.compareTo(it.getPrice()) <= 0)
+                                .orElse(true)
+                )
+                .ifPresent(it -> this.addDeal(order, it));
+    }
+
+    private void addDeal(OrderEntity order, AllHistoryRpt history) {
+        DealEntity deal = new DealEntity();
+        deal.setPrice(history.getPrice());
+        deal.setVolume(Double.min(history.getQty(), order.getVolume() - order.getBalance()));
+        deal.setUno(history.getUno());
+        deal.setResult(
+                deal.getPrice()
+                        .multiply(BigDecimal.valueOf(deal.getVolume()))
+                        .multiply(BigDecimal.valueOf(history.getLotSize()))
+                        .negate()
+        );
+        deal.setDate(history.getDate());
+        deal.setBalance(deal.getVolume());
+        deal.setType(history.getBidFlag() ? EventType.BUY : EventType.SELL);
+        deal.setSec(order.getSec());
+        order.setBalance(order.getBalance() + deal.getVolume());
+        order.getDeals().add(deal);
+        if (order.getBalance().equals(order.getVolume())) {
+            order.setStatus(OrderStatusType.ACTIVE);
         }
-    }
-
-    private BigDecimal getBuyPrice(OrderEntity order, AllHistoryRpt history) {
-        return Optional.ofNullable(history)
-                .filter(AllHistoryRpt::getBidFlag)
-                .filter(it -> new BigDecimal(it.getUno().substring(0, 14))
-                        .subtract(new BigDecimal(order.getUno().substring(0, 14)))
-                        .compareTo(TIME_OUT) >= 0)
-                .map(AllHistoryRpt::getPrice)
-                .filter(
-                        it -> Optional.ofNullable(order.getLimitPrice())
-                                .map(limit -> limit.compareTo(it) >= 0)
-                                .orElse(true)
-                )
-                .orElse(null);
-    }
-
-    private BigDecimal getSellPrice(OrderEntity order, AllHistoryRpt history) {
-        return Optional.ofNullable(history)
-                .filter(it -> !it.getBidFlag())
-                .filter(it -> new BigDecimal(it.getUno().substring(0, 14))
-                        .subtract(new BigDecimal(order.getUno().substring(0, 14)))
-                        .compareTo(TIME_OUT) >= 0)
-                .map(AllHistoryRpt::getPrice)
-                .filter(
-                        it -> Optional.ofNullable(order.getLimitPrice())
-                                .map(limit -> limit.compareTo(it) <= 0)
-                                .orElse(true)
-                )
-                .orElse(null);
     }
 
     private List<BigDecimal> getCheckValues(DataChart data, EventEntity event) {

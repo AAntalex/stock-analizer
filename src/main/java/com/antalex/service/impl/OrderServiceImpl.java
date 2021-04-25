@@ -12,6 +12,7 @@ import com.antalex.persistence.repository.ClassSecRepository;
 import com.antalex.persistence.repository.OrderHistoryRepository;
 import com.antalex.persistence.repository.OrderRepository;
 import com.antalex.service.DataChartService;
+import com.antalex.service.DealService;
 import com.antalex.service.OrderService;
 import com.antalex.service.TariffPlanService;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -33,18 +33,21 @@ public class OrderServiceImpl implements OrderService {
     private final ClassSecRepository classSecRepository;
     private final OrderHistoryRepository orderHistoryRepository;
     private final Map<String, OrderEntity> cacheOrders;
+    private final DealService dealService;
 
     OrderServiceImpl(OrderRepository orderRepository,
                      DataChartService dataChartService,
                      TariffPlanService tariffPlanService,
                      OrderHistoryRepository orderHistoryRepository,
-                     ClassSecRepository classSecRepository)
+                     ClassSecRepository classSecRepository,
+                     DealService dealService)
     {
         this.orderRepository = orderRepository;
         this.dataChartService = dataChartService;
         this.tariffPlanService = tariffPlanService;
         this.orderHistoryRepository = orderHistoryRepository;
         this.classSecRepository = classSecRepository;
+        this.dealService = dealService;
         this.cacheOrders =
                 orderRepository.findAllByStatusNot(OrderStatusType.CLOSED).stream()
                         .collect(Collectors.toMap(this::getHashCode, it -> it));
@@ -133,6 +136,15 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    public List<OrderEntity> findAllByStatusNot(OrderStatusType status) {
+        if (BatchDataHolder.getBachSize() > 0) {
+            return new ArrayList<>(cacheOrders.values());
+        } else {
+            return orderRepository.findAllByStatusNot(status);
+        }
+    }
+
+    @Override
     public List<OrderEntity> findAllByEventAndStatus(EventEntity event, OrderStatusType status) {
         if (BatchDataHolder.getBachSize() > 0) {
             return cacheOrders.values().stream()
@@ -155,8 +167,31 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public List<OrderEntity> getProcessedOrders(EventEntity event, OrderStatusType status, EventType type) {
-        return orderRepository.findAllByEventAndStatusAndTypeAndResultIsNotNullOrderByUno(event, status, type);
+    public List<OrderEntity> findAllBySecAndTypeAndStatusAndUnoLessThan
+            (
+                    ClassSecEntity sec
+                    , EventType type
+                    , OrderStatusType status
+                    , String uno
+            )
+    {
+        if (BatchDataHolder.getBachSize() > 0) {
+            return cacheOrders.values().stream()
+                    .filter(
+                            it ->
+                                    it.getSec() == sec
+                                            && it.getType() == type
+                                            && it.getStatus() == status
+                                            && it.getUno().compareTo(uno) < 0
+                    )
+                    .sorted(Comparator.comparing(OrderEntity::getUno))
+                    .collect(Collectors.toList());
+        } else {
+            return orderRepository.findAllBySecAndTypeAndStatusAndUnoLessThan(sec, type, status, uno)
+                    .stream()
+                    .sorted(Comparator.comparing(OrderEntity::getUno))
+                    .collect(Collectors.toList());
+        }
     }
 
     @Override
@@ -171,6 +206,7 @@ public class OrderServiceImpl implements OrderService {
         OrderEntity order = new OrderEntity();
         order.setType(type);
         order.setStatus(OrderStatusType.PREPARE);
+        order.setBalance(0d);
         order.setEvent(event);
         order.setLimitPrice(price);
         order.setUno(data.getHistory().getUno());
@@ -225,60 +261,108 @@ public class OrderServiceImpl implements OrderService {
         return limitOrder;
     }
 
+
     @Override
-    public void setPrice(OrderEntity order, BigDecimal price, String uno) {
-        if (price != null) {
-            order.setPrice(price);
-            BigDecimal sum = getSum(order);
+    public void process(OrderEntity order) {
+        Optional.ofNullable(order)
+                .map(this::procCancel)
+                .map(this::procActive)
+                .map(this::procOpen);
+    }
+
+    private List<OrderEntity> getOrdersForQuit(OrderEntity order) {
+        if (Objects.isNull(order.getEvent())) {
+            return findAllBySecAndTypeAndStatusAndUnoLessThan(
+                    order.getSec(),
+                    order.getType() == EventType.BUY ? EventType.SELL : EventType.BUY,
+                    OrderStatusType.OPEN,
+                    order.getUno());
+        } else {
+           if (Objects.isNull(order.getMain())) {
+               return Collections.emptyList();
+           } else {
+               return Collections.singletonList(order.getMain());
+           }
+        }
+    }
+
+    private Boolean quitDealWithOrder(DealEntity deal, OrderEntity order) {
+        return order.getDeals()
+                .stream()
+                .filter(it -> it.getBalance().compareTo(0d) > 0)
+                .anyMatch(it -> dealService.quitDeals(deal, it));
+    }
+
+    private Boolean quitOrder(OrderEntity order) {
+        List<OrderEntity> ordersForQuit = getOrdersForQuit(order);
+        return order.getDeals().stream()
+                .noneMatch(
+                        deal -> ordersForQuit
+                                .stream()
+                                .anyMatch(it -> quitDealWithOrder(deal, it))
+                );
+    }
+
+    private OrderEntity procCancel(OrderEntity order) {
+        if (order.getStatus() == OrderStatusType.CANCELED) {
+            if (order.getDeals().size() == 0) {
+                order.setStatus(OrderStatusType.CLOSED);
+            } else {
+                order.setStatus(OrderStatusType.ACTIVE);
+            }
+        }
+        return order;
+    }
+
+    private OrderEntity procActive(OrderEntity order) {
+        if (order.getStatus() == OrderStatusType.ACTIVE) {
+            quitOrder(order);
             order.getRates().addAll(
                     tariffPlanService.applyForType(
                             tariffPlanService.getMain(),
                             RateType.CASH_FLOW,
-                            sum
+                            getSum(order)
                     )
             );
-            if (order.getType() == EventType.BUY || order.getType() == EventType.SELL) {
-                order.setStatus(OrderStatusType.OPEN);
-            } else {
-                order.setStatus(OrderStatusType.CLOSED);
-                OrderEntity mainOrder = order.getMain();
-                if (mainOrder != null) {
-                    BigDecimal mainSum = getSum(mainOrder);
-                    mainOrder.setStatus(OrderStatusType.CLOSED);
-                    BigDecimal income = (
-                            mainOrder.getType() == EventType.BUY
-                                    ? sum.subtract(mainSum)
-                                    : mainSum.subtract(sum)
-                    )
-                            .subtract(
-                                    Stream.concat(
-                                            order.getRates().stream(),
-                                            mainOrder.getRates().stream()
-                                    )
-                                            .map(RateValueEntity::getValue)
-                                            .reduce(BigDecimal.ZERO, BigDecimal::add)
-                            );
+            order.setStatus(OrderStatusType.OPEN);
+        }
+        return order;
+    }
 
-                    List<RateValueEntity> incomeRates = tariffPlanService.applyForType(
-                            tariffPlanService.getMain(),
-                            RateType.INCOME,
-                            income
-                    );
-                    mainOrder.getRates().addAll(incomeRates);
-                    mainOrder.setResult(income
+    private OrderEntity procOpen(OrderEntity order) {
+        if (order.getStatus() == OrderStatusType.OPEN
+                && order.getDeals().stream().noneMatch(it -> it.getBalance().compareTo(0d) > 0))
+        {
+            order.setResult(
+                    order.getDeals()
+                            .stream()
+                            .map(DealEntity::getResult)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add)
                             .subtract(
-                                    incomeRates.stream()
+                                    order.getRates()
+                                            .stream()
                                             .map(RateValueEntity::getValue)
                                             .reduce(BigDecimal.ZERO, BigDecimal::add)
                             )
-                    );
-                }
-            }
-            addHistory(order, price, uno);
+            );
             Optional.ofNullable(order.getMain())
-                    .ifPresent(it -> addHistory(it, price, uno));
-            this.save(order);
+                    .ifPresent(
+                            mainOrder ->
+                                    mainOrder.setResult(
+                                            mainOrder.getResult()
+                                                    .subtract(order.getResult())
+                                    )
+                    );
+            order.setStatus(OrderStatusType.CLOSED);
         }
+        return order;
+    }
+
+    @Override
+    public void processAll() {
+        findAllByStatusNot(OrderStatusType.CLOSED).stream()
+                .sorted(Comparator.comparing(OrderEntity::getUno))
+                .forEach(this::process);
     }
 
     private void addHistory(OrderEntity order, BigDecimal price, String uno) {
@@ -310,14 +394,10 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private BigDecimal getSum(OrderEntity order) {
-        return Optional.ofNullable(order)
-                .map(OrderEntity::getPrice)
-                .map(it ->
-                        it
-                                .multiply(new BigDecimal(order.getVolume()))
-                                .multiply(new BigDecimal(order.getSec().getLotSize()))
-                )
-                .orElse(null);
+        return order.getDeals()
+                .stream()
+                .map(dealService::getSum)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private Boolean setMaxPrice(OrderEntity order, BigDecimal price) {

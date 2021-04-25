@@ -92,7 +92,7 @@ public class DataChartServiceImpl implements DataChartService {
                 !event.getTriggers().isEmpty() &&
                 event.getTriggers()
                         .stream()
-                        .filter(it -> it.getStatus() != StatusType.DISABLEЫ)
+                        .filter(it -> it.getStatus() != StatusType.DISABLED)
                         .allMatch(it -> getBool(data, it.getTrigger().getCondition()))
                 ;
     }

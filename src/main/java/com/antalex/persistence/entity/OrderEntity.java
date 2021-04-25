@@ -8,8 +8,10 @@ import lombok.Data;
 import javax.persistence.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Table(name = "Z#AAA_ORDER")
 @Data
@@ -21,13 +23,13 @@ public class OrderEntity {
     @SequenceGenerator(name = "seq_id", sequenceName = "SEQ_ID")
     private Long id;
     @Column(name = "C_ORDER_NUM")
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "ORDER_SEQ")
-    @SequenceGenerator(name = "ORDER_SEQ", sequenceName = "ORDER_SEQ")
     private Long orderNum;
+    @Column(name = "C_TRANS_ID")
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "TRANS_SEQ")
+    @SequenceGenerator(name = "TRANS_SEQ", sequenceName = "TRANS_SEQ")
+    private String transId;
     @Column(name = "C_DATE_TIME")
     private Date date;
-    @Column(name = "C_TRANS_ID")
-    private String transId;
     @Column(name = "C_EXEC_TYPE")
     private ExecType execType;
     @OneToOne
@@ -53,6 +55,8 @@ public class OrderEntity {
     private String caption;
     @Column(name = "C_STATUS")
     private OrderStatusType status;
+    @Column(name = "C_BALANCE")
+    private Double balance;
     @OneToOne
     @JoinColumn(name = "C_EVENT")
     private EventEntity event;
@@ -77,6 +81,9 @@ public class OrderEntity {
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "C_ORDER_REF")
     private List<OrderHistoryEntity> history = new ArrayList<>();
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "C_ORDER_REF")
+    private List<DealEntity> deals = new ArrayList<>();
     @Transient
     private List<BigDecimal> boolTriggerValues = new ArrayList<>();
     @Transient

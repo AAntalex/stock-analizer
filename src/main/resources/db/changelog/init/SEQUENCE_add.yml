@@ -4,7 +4,7 @@ databaseChangeLog:
     author: Antalex
     changes:
     - createSequence:
-        sequenceName: ORDER_SEQ
+        sequenceName: TRANS_SEQ
         schemaName:  IBS
         minValue: 1
         maxValue: 2147483647
