@@ -283,17 +283,19 @@ public class TestServiceImpl implements TestService {
         deal.setPrice(history.getPrice());
         deal.setVolume(Double.min(history.getQty(), order.getVolume() - order.getBalance()));
         deal.setUno(history.getUno());
+        deal.setDate(history.getDate());
+        deal.setBalance(deal.getVolume());
+        deal.setType(history.getBidFlag() ? EventType.BUY : EventType.SELL);
         deal.setResult(
                 deal.getPrice()
                         .multiply(BigDecimal.valueOf(deal.getVolume()))
                         .multiply(BigDecimal.valueOf(history.getLotSize()))
-                        .negate()
         );
-        deal.setDate(history.getDate());
-        deal.setBalance(deal.getVolume());
-        deal.setType(history.getBidFlag() ? EventType.BUY : EventType.SELL);
+        if (deal.getType() == EventType.BUY) {
+            deal.setResult(deal.getResult().negate());
+        }
         deal.setSec(order.getSec());
-        order.setBalance(order.getBalance() + deal.getVolume());
+        deal.setTradeNum(history.getTradeNum());
         order.getDeals().add(deal);
         if (order.getBalance().equals(order.getVolume())) {
             order.setStatus(OrderStatusType.ACTIVE);

@@ -25,6 +25,7 @@ public class ChartServiceImpl implements ChartService {
     public void init() {
         chartFormer.init();
         indicatorService.init();
+        System.gc();
     }
 
     @Override

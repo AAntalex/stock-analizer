@@ -8,10 +8,9 @@ import lombok.Data;
 import javax.persistence.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
+
 
 @Table(name = "Z#AAA_ORDER")
 @Data
@@ -88,4 +87,11 @@ public class OrderEntity {
     private List<BigDecimal> boolTriggerValues = new ArrayList<>();
     @Transient
     private List<BigDecimal> deltaTriggerValues = new ArrayList<>();
+
+    public Double getBalance() {
+        return this.deals
+                .stream()
+                .map(DealEntity::getBalance)
+                .reduce(0d, (sum, it) -> sum + it );
+    }
 }

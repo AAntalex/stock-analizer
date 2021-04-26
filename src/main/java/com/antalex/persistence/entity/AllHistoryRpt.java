@@ -22,7 +22,7 @@ public class AllHistoryRpt implements History{
     @Column(name = "QUOTES")
     private String quotes;
     @Column(name = "TRADE_NUM")
-    private String tradeNum;
+    private Long tradeNum;
     @Column(name = "QTY")
     private Double qty;
     @Column(name = "BID_FLAG")

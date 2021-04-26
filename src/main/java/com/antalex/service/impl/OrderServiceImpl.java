@@ -233,7 +233,7 @@ public class OrderServiceImpl implements OrderService {
                     order.getEvent().getStopLimit().getEvent(),
                     EventType.STOP_LIMIT,
                     order.getStopLimit().getPrice(),
-                    order.getVolume(),
+                    order.getBalance(),
                     "",
                     order);
             order.setStatus(OrderStatusType.DONE);
@@ -248,7 +248,7 @@ public class OrderServiceImpl implements OrderService {
                     order.getType() == EventType.BUY
                             ? price.subtract(order.getTakeProfit().getSpread())
                             : price.add(order.getTakeProfit().getSpread()),
-                    order.getVolume(),
+                    order.getBalance(),
                     "",
                     order);
             order.setStatus(OrderStatusType.DONE);
@@ -330,7 +330,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderEntity procOpen(OrderEntity order) {
-        if (order.getStatus() == OrderStatusType.OPEN
+        if ((order.getStatus() == OrderStatusType.OPEN || order.getStatus() == OrderStatusType.DONE)
                 && order.getDeals().stream().noneMatch(it -> it.getBalance().compareTo(0d) > 0))
         {
             order.setResult(
@@ -349,7 +349,8 @@ public class OrderServiceImpl implements OrderService {
                     .ifPresent(
                             mainOrder ->
                                     mainOrder.setResult(
-                                            mainOrder.getResult()
+                                            Optional.ofNullable(mainOrder.getResult())
+                                                    .orElse(BigDecimal.ZERO)
                                                     .subtract(order.getResult())
                                     )
                     );
@@ -428,7 +429,7 @@ public class OrderServiceImpl implements OrderService {
 
     private Boolean checkStopLimit(OrderEntity order, DataChart data) {
         BigDecimal price = data.getData().getCandle().getClose();
-        return price != null && order.getStopLimit() != null && order.getPrice() != null &&
+        return price != null && order.getStopLimit() != null &&
                 (
                         order.getType() == EventType.BUY && price.compareTo(order.getStopLimit().getStopPrice()) <= 0 ||
                         order.getType() == EventType.SELL && price.compareTo(order.getStopLimit().getStopPrice()) >= 0
@@ -437,7 +438,7 @@ public class OrderServiceImpl implements OrderService {
 
     private Boolean checkTakeProfit(OrderEntity order, DataChart data) {
         BigDecimal price = data.getData().getCandle().getClose();
-        if (price == null || order.getTakeProfit() == null || order.getPrice() == null) {
+        if (price == null || order.getTakeProfit() == null) {
             return false;
         }
         if (!order.getTakeProfit().getActive()) {
