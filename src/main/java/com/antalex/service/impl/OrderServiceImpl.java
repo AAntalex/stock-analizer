@@ -344,6 +344,10 @@ public class OrderServiceImpl implements OrderService {
                                             .map(RateValueEntity::getValue)
                                             .reduce(BigDecimal.ZERO, BigDecimal::add)
                             )
+                            .add(
+                                    Optional.ofNullable(order.getResult())
+                                            .orElse(BigDecimal.ZERO)
+                            )
             );
             Optional.ofNullable(order.getMain())
                     .ifPresent(
@@ -351,7 +355,7 @@ public class OrderServiceImpl implements OrderService {
                                     mainOrder.setResult(
                                             Optional.ofNullable(mainOrder.getResult())
                                                     .orElse(BigDecimal.ZERO)
-                                                    .subtract(order.getResult())
+                                                    .add(order.getResult())
                                     )
                     );
             order.setStatus(OrderStatusType.CLOSED);
