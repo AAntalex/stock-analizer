@@ -2,10 +2,7 @@ package com.antalex.persistence.entity;
 
 import lombok.Data;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import javax.persistence.*;
 import java.math.BigDecimal;
 
 @Table(name = "VW_RPT_ALL_TRADES_AND_QUOTES")
@@ -33,6 +30,7 @@ public class AllHistoryRpt implements History{
     private Integer lotSize;
     @Column(name = "SEC_SCALE")
     private Integer scale;
-    @Column(name = "SEC_REF")
-    private Long secId;
+    @OneToOne
+    @JoinColumn(name = "SEC_REF")
+    private ClassSecEntity sec;
 }

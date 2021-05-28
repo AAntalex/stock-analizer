@@ -20,5 +20,4 @@ public class BatchDataHolder {
     public static void setBatchSize(Integer batchSize) {
         RequestContextHolder.getRequestAttributes().setAttribute("batchSize", batchSize, SCOPE_REQUEST);
     }
-
 }

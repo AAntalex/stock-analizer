@@ -35,11 +35,6 @@ public class DealServiceImpl implements DealService {
         return deal.getBalance().compareTo(0d) == 0;
     }
 
-    @Override
-    public BigDecimal getSum(DealEntity deal) {
-        return getSum(deal, deal.getVolume());
-    }
-
     private BigDecimal getSum(DealEntity deal, Double balance) {
         return Optional.ofNullable(deal)
                 .map(DealEntity::getPrice)

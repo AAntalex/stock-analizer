@@ -6,6 +6,7 @@ import com.antalex.model.AnaliseResultTable;
 import com.antalex.model.enums.OrderStatusType;
 import com.antalex.model.enums.EventType;
 import com.antalex.persistence.entity.*;
+import com.antalex.persistence.repository.AccountRepository;
 import com.antalex.service.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,23 +32,26 @@ public class TestServiceImpl implements TestService {
     private final OrderService orderService;
     private final DataChartService dataChartService;
     private final EventEntity testEvent;
+    private final AccountEntity testAccount;
     private final AnaliseService analiseService;
     private final EventService eventService;
 
     private int k = 0;
     private Calendar calendar;
-    private BigDecimal totalSum = BigDecimal.valueOf(100000);
 
     TestServiceImpl(OrderService orderService,
                     DataChartService dataChartService,
                     EventService eventService,
-                    AnaliseService analiseService)
+                    AnaliseService analiseService,
+                    AccountRepository accountRepository)
     {
         this.orderService = orderService;
         this.dataChartService = dataChartService;
         this.analiseService = analiseService;
         this.eventService = eventService;
+
         this.testEvent = this.eventService.findByCode("TEST");
+        this.testAccount = accountRepository.findByAccountNumber("L01-00000F00");
     }
 
     @Override
@@ -99,7 +103,7 @@ public class TestServiceImpl implements TestService {
         orderService.findAllByStatus(OrderStatusType.PREPARE)
                 .forEach(it -> process(it, data.getHistory()));
 
-        orderService.processAll();
+        orderService.processAll(data);
         dataChartService.stopTrace();
 
         printLog(data);
@@ -121,7 +125,7 @@ public class TestServiceImpl implements TestService {
 
         orderList.addAll(getOrderList(OrderStatusType.OPEN)
                 .stream()
-                .map(it -> orderService.procLimit(it, data, true))
+                .map(it -> orderService.procLimit(it, data))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList()));
 
@@ -160,6 +164,7 @@ public class TestServiceImpl implements TestService {
                 testEvent,
                 EventType.BUY,
                 null,
+                this.testAccount,
                 10d,
                 "",
                 null
@@ -173,6 +178,7 @@ public class TestServiceImpl implements TestService {
                 testEvent,
                 EventType.SELL,
                 null,
+                this.testAccount,
                 10d,
                 "",
                 null
@@ -281,7 +287,7 @@ public class TestServiceImpl implements TestService {
     private void addDeal(OrderEntity order, AllHistoryRpt history) {
         DealEntity deal = new DealEntity();
         deal.setPrice(history.getPrice());
-        deal.setVolume(Double.min(history.getQty(), order.getVolume() - order.getBalance()));
+        deal.setVolume(Double.min(history.getQty(), order.getVolume() - orderService.getBalance(order)));
         deal.setUno(history.getUno());
         deal.setDate(history.getDate());
         deal.setBalance(deal.getVolume());
@@ -296,8 +302,10 @@ public class TestServiceImpl implements TestService {
         }
         deal.setSec(order.getSec());
         deal.setTradeNum(history.getTradeNum());
+        deal.setAccount(order.getAccount());
+        deal.setOrder(order);
         order.getDeals().add(deal);
-        if (order.getBalance().equals(order.getVolume())) {
+        if (orderService.getBalance(order).equals(order.getVolume())) {
             order.setStatus(OrderStatusType.ACTIVE);
         }
     }

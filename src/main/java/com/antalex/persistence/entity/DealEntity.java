@@ -6,6 +6,8 @@ import lombok.Data;
 import javax.persistence.*;
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.Objects;
+import java.util.Optional;
 
 @Table(name = "Z#AAA_DEAL")
 @Data
@@ -18,16 +20,14 @@ public class DealEntity {
     private Long id;
     @Column(name = "C_TRADE_NUM")
     private Long tradeNum;
-    @Column(name = "C_TRANS_ID")
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "TRANS_SEQ")
-    @SequenceGenerator(name = "TRANS_SEQ", sequenceName = "TRANS_SEQ")
-    private String transId;
     @Column(name = "C_DATE_TIME")
     private Date date;
     @Column(name = "C_UNO")
     private String uno;
     @Column(name = "C_PRICE")
     private BigDecimal price;
+    @Column(name = "C_VALUE")
+    private BigDecimal value;
     @OneToOne
     @JoinColumn(name = "C_ORDER_REF")
     private OrderEntity order;
@@ -44,4 +44,16 @@ public class DealEntity {
     private BigDecimal result;
     @Column(name = "C_QUIT")
     private String quit;
+    @OneToOne
+    @JoinColumn(name = "C_ACCOUNT")
+    private AccountEntity account;
+
+    public BigDecimal getValue() {
+        if (Objects.isNull(this.value)) {
+            setValue(this.getPrice()
+                    .multiply(new BigDecimal(this.getVolume()))
+                    .multiply(new BigDecimal(this.getSec().getLotSize())));
+        }
+        return this.value;
+    }
 }

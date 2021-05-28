@@ -22,11 +22,9 @@ public class OrderEntity {
     @SequenceGenerator(name = "seq_id", sequenceName = "SEQ_ID")
     private Long id;
     @Column(name = "C_ORDER_NUM")
-    private Long orderNum;
+    private String orderNum;
     @Column(name = "C_TRANS_ID")
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "TRANS_SEQ")
-    @SequenceGenerator(name = "TRANS_SEQ", sequenceName = "TRANS_SEQ")
-    private String transId;
+    private Long transId;
     @Column(name = "C_DATE_TIME")
     private Date date;
     @Column(name = "C_EXEC_TYPE")
@@ -48,6 +46,10 @@ public class OrderEntity {
     private BigDecimal minPrice;
     @Column(name = "C_RESULT")
     private BigDecimal result;
+    @Column(name = "C_LOCK_SUM")
+    private BigDecimal lockedSum;
+    @Column(name = "C_TOTAL_SUM")
+    private BigDecimal totalSum;
     @Column(name = "C_VOLUME")
     private Double volume;
     @Column(name = "C_CAPTION")
@@ -83,15 +85,11 @@ public class OrderEntity {
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "C_ORDER_REF")
     private List<DealEntity> deals = new ArrayList<>();
+    @OneToOne
+    @JoinColumn(name = "C_ACCOUNT")
+    private AccountEntity account;
     @Transient
     private List<BigDecimal> boolTriggerValues = new ArrayList<>();
     @Transient
     private List<BigDecimal> deltaTriggerValues = new ArrayList<>();
-
-    public Double getBalance() {
-        return this.deals
-                .stream()
-                .map(DealEntity::getBalance)
-                .reduce(0d, (sum, it) -> sum + it );
-    }
 }

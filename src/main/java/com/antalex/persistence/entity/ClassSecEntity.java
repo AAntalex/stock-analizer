@@ -2,10 +2,7 @@ package com.antalex.persistence.entity;
 
 import lombok.Data;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import javax.persistence.*;
 
 @Table(name = "Z#AAA_CLASS_SEC")
 @Data
@@ -26,4 +23,7 @@ public class ClassSecEntity {
     private Integer scale;
     @Column(name = "C_LOTSIZE")
     private Integer lotSize;
+    @OneToOne
+    @JoinColumn(name = "C_SEC_FACE_UNIT")
+    private FtMoneyEntity cur;
 }
