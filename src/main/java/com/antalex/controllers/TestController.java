@@ -33,27 +33,37 @@ public class TestController {
             ,   @RequestParam(value = "approximation", defaultValue = "0") int interval
     ) {
         DataChartHolder.setTest(true);
+        chartService.init();
+        orderService.startCache(100);
+        DateFormatHolder.setApproximation(0);
+
         DateFormatHolder.splitDate(sDateBegin, sDateEnd, "0000000", "235959", Calendar.MONTH)
                 .forEach(
                         monthInterval -> {
+/*
                             Date prevDay = DateFormatHolder.getNextDate(
                                     DateFormatHolder.getDateFromString(monthInterval.getKey()),
                                     Calendar.DATE,
                                     -1);
 
+
                             chartService.init();
-                            orderService.startBatch(100);
+                            orderService.startCache(100);
                             DateFormatHolder.setApproximation(0);
-                            chartService.query(
-                                    secClass,
-                                    DateFormatHolder.getStringFromDate(prevDay),
+*/
+                            log.info("AAA INIT!!! ThreadId: " + Thread.currentThread().getId());
+
+                            chartService.getData(
+                                    "",
+                                    DateFormatHolder.getStringFromDate(DateFormatHolder.getDateFromString(monthInterval.getKey())),
                                     monthInterval.getValue(),
                                     stockClass,
                                     interval
                             );
-                            orderService.stopBatch();
+//                            orderService.stopCache();
                         });
 
+        orderService.stopCache();
         log.info("AAA TEST is Done");
         return Collections.emptyList();
 /*

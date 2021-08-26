@@ -6,6 +6,7 @@ import com.antalex.service.DataStockService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -16,10 +17,18 @@ public class AllHistoryService implements DataStockService<AllHistoryRpt> {
 
     public List<AllHistoryRpt> query(String secClass, String sDateBegin, String sDateEnd, String stockClass) {
         if (sDateEnd == null || sDateEnd.isEmpty()) {
-            return allHistoryRepository.findByCodeAndUnoGreaterThanEqualAndClassCode(secClass, sDateBegin, stockClass);
+            return allHistoryRepository.findAllByCodeInAndUnoGreaterThanEqualAndClassCode(
+                    Arrays.asList(secClass.split(",")),
+                    sDateBegin,
+                    stockClass
+            );
         }
         try {
-            return allHistoryRepository.findByCodeAndUnoGreaterThanEqualAndUnoLessThanEqualAndClassCode(secClass, sDateBegin, sDateEnd, stockClass);
+            return allHistoryRepository.findAllByCodeInAndUnoGreaterThanEqualAndUnoLessThanEqualAndClassCode(
+                    Arrays.asList(secClass.split(",")),
+                    sDateBegin,
+                    sDateEnd,
+                    stockClass);
         } catch (Exception e) {
             return Collections.emptyList();
         }

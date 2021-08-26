@@ -1,8 +1,10 @@
 package com.antalex.service.impl;
 
+import com.antalex.holders.DataHolder;
 import com.antalex.model.AnaliseResultRow;
 import com.antalex.model.DataChart;
 import com.antalex.model.AnaliseResultTable;
+import com.antalex.model.Trend;
 import com.antalex.model.enums.OrderStatusType;
 import com.antalex.model.enums.EventType;
 import com.antalex.persistence.entity.*;
@@ -86,7 +88,7 @@ public class TestServiceImpl implements TestService {
         analiseService.saveCorrelations(boolResultBuy, "Result/CORR_BUY_BOOL.csv", 1);
         analiseService.saveCorrelations(deltaResultBuy, "Result/CORR_BUY_DELTA.csv", steps);
 
-        log.info("Result Saved k = " + k + " size " + orderList.size() + " all " + dataChartService.getCache().getAllHistory().size());
+        log.info("Result Saved k = " + k + " size " + orderList.size() + " all " + dataChartService.getCache().getDataList().size());
     }
 
     @Override
@@ -100,7 +102,7 @@ public class TestServiceImpl implements TestService {
 
         eventService.applyAll(data);
 
-        orderService.findAllByStatus(OrderStatusType.PREPARE)
+        orderService.findAllBySecAndStatus(data.getHistory().getSec(), OrderStatusType.PREPARE)
                 .forEach(it -> process(it, data.getHistory()));
 
         orderService.processAll(data);
@@ -199,11 +201,27 @@ public class TestServiceImpl implements TestService {
             this.calendar.add(Calendar.HOUR, 1);
         }
         if (data.getDate().compareTo(this.calendar.getTime()) >= 0) {
-            log.info(String.format(
-                    "Process %d records. Time (%s)",
-                    dataChartService.getCache().getDataList().size(),
-                    data.getDate())
+            System.gc();
+            log.info(
+                    String.format(
+                            "Process %d records. Time (%s). Cache size - %d",
+                            dataChartService.getCache().getDataList().size(),
+                            data.getDate(),
+                            Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()
+                    )
+                            + " 1 getTraceCalc = " + dataChartService.getCache().getTraceCalc().size()
+                            + " 1 getTrends = " + dataChartService.getCache().getTrends().size()
+                            + " 1 getLastOfferQuotes = " + Optional.ofNullable(dataChartService.getCache().getLastOfferQuotes()).map(List::size).orElse(0)
+                            + " 1 getLastBidQuotes = " + Optional.ofNullable(dataChartService.getCache().getLastBidQuotes()).map(List::size).orElse(0)
+
+                            + " 2 dataList = " + DataHolder.dataList().size()
+                            + " 2 processIndicator = " + DataHolder.processIndicator().size()
+                            + " 2 trends = " + DataHolder.trends().size()
+                            + " 2 trends.points = " + DataHolder.trends().values().stream().map(Trend::getPoints).map(List::size).reduce(0, (sum, it) -> sum + it)
+
             );
+
+
             this.calendar.setTime(data.getDate());
             this.calendar.add(Calendar.HOUR, 1);
         }

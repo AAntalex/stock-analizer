@@ -15,7 +15,7 @@ public class MoneyPositionEntity {
     private Long id;
     @OneToOne
     @JoinColumn(name = "C_CUR")
-    private FtMoneyEntity cur;
+    private CurrencyEntity cur;
     @Column(name = "C_STATUS")
     private StatusType status;
     @Column(name = "C_AMOUNT")

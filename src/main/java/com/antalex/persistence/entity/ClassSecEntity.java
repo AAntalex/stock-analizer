@@ -23,7 +23,9 @@ public class ClassSecEntity {
     private Integer scale;
     @Column(name = "C_LOTSIZE")
     private Integer lotSize;
+    @Column(name = "C_AUTO_TRADE")
+    private Boolean autoTrade;
     @OneToOne
     @JoinColumn(name = "C_SEC_FACE_UNIT")
-    private FtMoneyEntity cur;
+    private CurrencyEntity cur;
 }

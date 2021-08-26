@@ -34,7 +34,6 @@ public class DataHolder {
     public static List<DataChart> dataList() {
         return dataThreadLocal.get();
     }
-
     public static DataChart data(int index) {
         if (dataThreadLocal.get().isEmpty()) {
             throw new IllegalStateException(EMPTY_DATA);
@@ -106,4 +105,11 @@ public class DataHolder {
         return trendsThreadLocal.get().get(trendCode);
     }
 
+    public static Map<String, BigDecimal> processIndicator() {
+        return processedIndicatorThreadLocal.get();
+    }
+
+    public static Map<String, Trend> trends() {
+        return trendsThreadLocal.get();
+    }
 }

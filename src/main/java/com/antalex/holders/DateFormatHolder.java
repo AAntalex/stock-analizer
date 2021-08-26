@@ -1,10 +1,8 @@
 package com.antalex.holders;
 
-import com.antalex.persistence.entity.AllHistoryRpt;
 import javafx.util.Pair;
 import lombok.extern.slf4j.Slf4j;
 
-import java.math.BigDecimal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;

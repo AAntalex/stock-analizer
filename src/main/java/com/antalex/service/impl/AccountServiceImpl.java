@@ -2,7 +2,7 @@ package com.antalex.service.impl;
 
 import com.antalex.model.enums.StatusType;
 import com.antalex.persistence.entity.AccountEntity;
-import com.antalex.persistence.entity.FtMoneyEntity;
+import com.antalex.persistence.entity.CurrencyEntity;
 import com.antalex.persistence.entity.MoneyPositionEntity;
 import com.antalex.persistence.repository.AccountRepository;
 import com.antalex.service.AccountService;
@@ -10,7 +10,6 @@ import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.swing.text.html.Option;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
@@ -22,7 +21,7 @@ public class AccountServiceImpl implements AccountService {
     private final AccountRepository accountRepository;
 
     @Override
-    public Optional<MoneyPositionEntity> getMoneyPosition(AccountEntity account, FtMoneyEntity cur) {
+    public Optional<MoneyPositionEntity> getMoneyPosition(AccountEntity account, CurrencyEntity cur) {
         return account
                 .getPositions()
                 .stream()
@@ -36,7 +35,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public BigDecimal getAvailableAmount(AccountEntity account, FtMoneyEntity cur) {
+    public BigDecimal getAvailableAmount(AccountEntity account, CurrencyEntity cur) {
         return this.getMoneyPosition(account, cur)
                 .map(it ->
                         Optional

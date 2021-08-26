@@ -1,6 +1,6 @@
 package com.antalex.service.impl;
 
-import com.antalex.holders.BatchDataHolder;
+import com.antalex.holders.CacheDataHolder;
 import com.antalex.holders.DataChartHolder;
 import com.antalex.holders.DataHolder;
 import com.antalex.model.DataChart;
@@ -33,21 +33,18 @@ public class OrderServiceImpl implements OrderService {
     private final OrderHistoryRepository orderHistoryRepository;
     private final Map<String, OrderEntity> cacheOrders;
     private final DealService dealService;
-    private final AccountService accountService;
 
     OrderServiceImpl(OrderRepository orderRepository,
                      DataChartService dataChartService,
                      TariffPlanService tariffPlanService,
                      OrderHistoryRepository orderHistoryRepository,
-                     DealService dealService,
-                     AccountService accountService)
+                     DealService dealService)
     {
         this.orderRepository = orderRepository;
         this.dataChartService = dataChartService;
         this.tariffPlanService = tariffPlanService;
         this.orderHistoryRepository = orderHistoryRepository;
         this.dealService = dealService;
-        this.accountService = accountService;
         this.cacheOrders =
                 orderRepository.findAllByStatusNot(OrderStatusType.CLOSED).stream()
                         .collect(Collectors.toMap(this::getHashCode, it -> it));
@@ -62,32 +59,18 @@ public class OrderServiceImpl implements OrderService {
         if (DataChartHolder.isCalcCorr()) {
             return entity;
         }
-        if (BatchDataHolder.getBachSize() > 0) {
-            cacheOrders.putIfAbsent(getHashCode(entity), entity);
-        }
-/*
-
-        System.out.println(
-                "AAA threadId: " + Thread.currentThread().getId()
-                        + " DATE: " + new Date()
-                        + " ID: " + entity.getId()
-                        + " UNO: " + entity.getUno()
-                        + " PRICE: " + entity.getPrice()
-                        + " NAX_PRICE: " + entity.getMaxPrice()
-                        + " NIN_PRICE: " + entity.getMinPrice()
-                        + " STATUS: " + entity.getStatus()
-                        + " TYPE: " + entity.getType()
-        );
-
-*/
-        if (!force && BatchDataHolder.getBachSize() > 0) {
+        if (!force && CacheDataHolder.getBachSize() > 0) {
             BATCH_CACHE.putIfAbsent(getHashCode(entity), entity);
-            if (BATCH_CACHE.size() >= BatchDataHolder.getBachSize() || needFlush()) {
-                procBatch();
+            if (BATCH_CACHE.size() >= CacheDataHolder.getBachSize() || needFlush()) {
+                flush();
             }
             return entity;
         } else {
-            return orderRepository.save(entity);
+            entity = orderRepository.save(entity);
+            if (CacheDataHolder.isCached()) {
+                cacheOrders.putIfAbsent(getHashCode(entity), entity);
+            }
+            return entity;
         }
     }
 
@@ -99,30 +82,38 @@ public class OrderServiceImpl implements OrderService {
         return false;
     }
 
+    private void flush() {
+        procBatch();
+        orderRepository.findAllByStatusNot(OrderStatusType.CLOSED)
+                .forEach(entity -> cacheOrders.putIfAbsent(getHashCode(entity), entity));
+    }
+
     @Override
-    public void startBatch(Integer batchSize) {
-        BatchDataHolder.setBatchSize(batchSize);
+    public void startCache(Integer batchSize) {
+        CacheDataHolder.setCache(true);
+        CacheDataHolder.setBatchSize(batchSize);
         BATCH_CACHE.clear();
     }
 
     @Override
-    public void stopBatch() {
-        BatchDataHolder.setBatchSize(0);
-        procBatch();
+    public void stopCache() {
+        CacheDataHolder.setBatchSize(0);
+        flush();
+        CacheDataHolder.setCache(false);
     }
 
     @Override
     public List<OrderHistoryRpt> getHistory(String code, String classCode, String sDateBegin, String sDateEnd) {
         if (sDateEnd == null || sDateEnd.isEmpty()) {
-            return orderHistoryRepository.findByCodeAndClassCodeAndUnoGreaterThanEqualAndUnoLessThanEqual(
-                    code,
+            return orderHistoryRepository.findAllByCodeInAndClassCodeAndUnoGreaterThanEqualAndUnoLessThanEqual(
+                    Arrays.asList(code.split(",")),
                     classCode,
                     sDateBegin,
                     sDateEnd
             );
         }
-        return orderHistoryRepository.findByCodeAndClassCodeAndUnoGreaterThanEqual(
-                code,
+        return orderHistoryRepository.findAllByCodeInAndClassCodeAndUnoGreaterThanEqual(
+                Arrays.asList(code.split(",")),
                 classCode,
                 sDateBegin
         );
@@ -135,33 +126,37 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public List<OrderEntity> findAllByStatus(OrderStatusType status) {
-        if (BatchDataHolder.getBachSize() > 0) {
+    public List<OrderEntity> findAllBySecAndStatus(ClassSecEntity sec, OrderStatusType status) {
+        if (CacheDataHolder.isCached()) {
             return cacheOrders.values().stream()
-                    .filter(it -> it.getStatus() == status)
+                    .filter(it -> it.getStatus() == status && it.getSec().equals(sec))
                     .collect(Collectors.toList());
         } else {
-            return orderRepository.findAllByStatus(status);
+            return orderRepository.findAllBySecAndStatus(sec, status);
         }
     }
 
     @Override
-    public List<OrderEntity> findAllByStatusNot(OrderStatusType status) {
-        if (BatchDataHolder.getBachSize() > 0) {
-            return new ArrayList<>(cacheOrders.values());
+    public List<OrderEntity> findAllBySecAndStatusNot(ClassSecEntity sec, OrderStatusType status) {
+        if (CacheDataHolder.isCached()) {
+            return cacheOrders.values().stream()
+                    .filter(it -> it.getStatus() != status && it.getSec().equals(sec))
+                    .collect(Collectors.toList());
         } else {
-            return orderRepository.findAllByStatusNot(status);
+            return orderRepository.findAllBySecAndStatusNot(sec, status);
         }
     }
 
     @Override
-    public List<OrderEntity> findAllByEventAndStatus(EventEntity event, OrderStatusType status) {
-        if (BatchDataHolder.getBachSize() > 0) {
+    public List<OrderEntity> findAllBySecAndEventAndStatus(ClassSecEntity sec,
+                                                           EventEntity event,
+                                                           OrderStatusType status) {
+        if (CacheDataHolder.isCached()) {
             return cacheOrders.values().stream()
-                    .filter(it -> it.getEvent() == event && it.getStatus() == status)
+                    .filter(it -> it.getSec().equals(sec) && it.getEvent() == event && it.getStatus() == status)
                     .collect(Collectors.toList());
         } else {
-            return orderRepository.findAllByEventAndStatus(event, status);
+            return orderRepository.findAllBySecAndEventAndStatus(sec, event, status);
         }
     }
 
@@ -189,7 +184,7 @@ public class OrderServiceImpl implements OrderService {
                     , String uno
             )
     {
-        if (BatchDataHolder.getBachSize() > 0) {
+        if (CacheDataHolder.isCached()) {
             return cacheOrders.values().stream()
                     .filter(
                             it ->
@@ -243,14 +238,16 @@ public class OrderServiceImpl implements OrderService {
         order.setDate(new Date());
 
         addHistory(order, price, order.getUno());
-        this.setLockedSum(
-                order,
-                Optional
-                        .ofNullable(price)
-                        .orElse(curPrice.multiply(K))
-                        .multiply(new BigDecimal(volume))
-                        .multiply(new BigDecimal(data.getHistory().getSec().getLotSize()))
-        );
+        if (isMain(order)) {
+            this.setLockedSum(
+                    order,
+                    Optional
+                            .ofNullable(price)
+                            .orElse(curPrice.multiply(K))
+                            .multiply(new BigDecimal(volume))
+                            .multiply(new BigDecimal(data.getHistory().getSec().getLotSize()))
+            );
+        }
         return this.save(order, true);
     }
 
@@ -266,7 +263,7 @@ public class OrderServiceImpl implements OrderService {
                     EventType.STOP_LIMIT,
                     order.getStopLimit().getPrice(),
                     order.getAccount(),
-                    order.getBalance(),
+                    getBalance(order),
                     "",
                     order);
             order.setStatus(OrderStatusType.DONE);
@@ -282,7 +279,7 @@ public class OrderServiceImpl implements OrderService {
                             ? price.subtract(order.getTakeProfit().getSpread())
                             : price.add(order.getTakeProfit().getSpread()),
                     order.getAccount(),
-                    order.getBalance(),
+                    getBalance(order),
                     "",
                     order);
             order.setStatus(OrderStatusType.DONE);
@@ -301,30 +298,66 @@ public class OrderServiceImpl implements OrderService {
                 .map(it -> procCancel(it, data))
                 .map(it -> procActive(it, data))
                 .map(it -> procOpen(it, data));
+        if (needFlush()) {
+            flush();
+        }
+    }
+
+    private Boolean isMain(OrderEntity order) {
+        return Objects.nonNull(order.getEvent()) && Objects.isNull(order.getMain());
+    }
+
+    private void accounting(OrderEntity order, BigDecimal amount) {
+        if (Objects.isNull(order.getMain())) {
+            getMoneyPosition(order)
+                    .ifPresent(it -> it.setAmount(it.getAmount().add(amount)));
+        }
+    }
+
+    private Optional<MoneyPositionEntity> getMoneyPosition(OrderEntity order) {
+        return getMoneyPosition(order, order.getSec().getCur());
+    }
+
+    private Optional<MoneyPositionEntity> getMoneyPosition(OrderEntity order, CurrencyEntity cur) {
+        return Optional
+                .ofNullable(order)
+                .map(OrderEntity::getAccount)
+                .map(AccountEntity::getPositions)
+                .map(List::stream)
+                .map(it ->
+                        it
+                                .filter(
+                                        position ->
+                                                position.getCur().getCurShort().equals(
+                                                        cur.getCurShort()
+                                                )
+                                )
+                                .findFirst()
+                                .orElse(null)
+                );
     }
 
     private void setLockedSum(OrderEntity order, BigDecimal lockedSum) {
-        if (Objects.isNull(order.getEvent()) || Objects.nonNull(order.getMain())) {
-            return;
+        if (isMain(order)) {
+            getMoneyPosition(order)
+                    .ifPresent(it ->
+                            it.setUsedAmount(
+                                    Optional
+                                            .ofNullable(lockedSum)
+                                            .orElse(BigDecimal.ZERO)
+                                            .subtract(
+                                                    Optional
+                                                            .ofNullable(order.getLockedSum())
+                                                            .orElse(BigDecimal.ZERO)
+                                            )
+                                            .add(
+                                                    Optional
+                                                            .ofNullable(it.getUsedAmount())
+                                                            .orElse(BigDecimal.ZERO)
+                                            )
+                            ));
+            order.setLockedSum(lockedSum);
         }
-        accountService.getMoneyPosition(order.getAccount(), order.getSec().getCur())
-                .ifPresent(it ->
-                        it.setUsedAmount(
-                                Optional
-                                        .ofNullable(lockedSum)
-                                        .orElse(BigDecimal.ZERO)
-                                        .subtract(
-                                                Optional
-                                                        .ofNullable(order.getLockedSum())
-                                                        .orElse(BigDecimal.ZERO)
-                                        )
-                                        .add(
-                                                Optional
-                                                        .ofNullable(it.getUsedAmount())
-                                                        .orElse(BigDecimal.ZERO)
-                                        )
-                        ));
-        order.setLockedSum(lockedSum);
     }
 
     private List<OrderEntity> getOrdersForQuit(OrderEntity order) {
@@ -365,6 +398,8 @@ public class OrderServiceImpl implements OrderService {
             if (order.getDeals().size() == 0) {
                 order.setStatus(OrderStatusType.CLOSED);
             } else {
+                order.setBalance(0d);
+                order.setVolume(getBalance(order));
                 order.setStatus(OrderStatusType.ACTIVE);
             }
             addHistory(order, data.getData().getCandle().getClose(), data.getHistory().getUno());
@@ -374,11 +409,8 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderEntity procActive(OrderEntity order, DataChart data) {
-        if (order.getStatus() == OrderStatusType.ACTIVE) {
-            order.setBalance(getBalance(order));
+        if (order.getStatus() == OrderStatusType.ACTIVE && order.getBalance().equals(0d)) {
             order.setTotalSum(getTotalSum(order));
-            this.setLockedSum(order, order.getTotalSum());
-            quitOrder(order);
             order.getRates().addAll(
                     tariffPlanService.applyForType(
                             tariffPlanService.getMain(),
@@ -386,6 +418,30 @@ public class OrderServiceImpl implements OrderService {
                             order.getTotalSum()
                     )
             );
+            BigDecimal rateAmount = order.getRates()
+                    .stream()
+                    .map(RateValueEntity::getValue)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            Optional
+                    .ofNullable(order.getMain())
+                    .orElse(order)
+                    .setResult(
+                            Optional.ofNullable(order.getResult())
+                                    .orElse(BigDecimal.ZERO)
+                                    .subtract(rateAmount)
+                    );
+            quitOrder(order);
+            if (isMain(order)) {
+                this.setLockedSum(order, order.getTotalSum());
+            } else {
+                accounting(
+                        order,
+                        order.getTotalSum()
+                                .multiply(
+                                        isBuy(order) ? BigDecimal.valueOf(-1) : BigDecimal.ONE
+                                ).subtract(rateAmount)
+                );
+            }
             order.setStatus(OrderStatusType.OPEN);
             addHistory(order, data.getData().getCandle().getClose(), data.getHistory().getUno());
             this.save(order);
@@ -397,32 +453,7 @@ public class OrderServiceImpl implements OrderService {
         if ((order.getStatus() == OrderStatusType.OPEN || order.getStatus() == OrderStatusType.DONE)
                 && order.getDeals().stream().noneMatch(it -> it.getBalance().compareTo(0d) > 0))
         {
-            order.setResult(
-                    order.getDeals()
-                            .stream()
-                            .map(DealEntity::getResult)
-                            .reduce(BigDecimal.ZERO, BigDecimal::add)
-                            .subtract(
-                                    order.getRates()
-                                            .stream()
-                                            .map(RateValueEntity::getValue)
-                                            .reduce(BigDecimal.ZERO, BigDecimal::add)
-                            )
-                            .add(
-                                    Optional.ofNullable(order.getResult())
-                                            .orElse(BigDecimal.ZERO)
-                            )
-            );
-            Optional.ofNullable(order.getMain())
-                    .ifPresent(
-                            mainOrder ->
-                                    mainOrder.setResult(
-                                            Optional.ofNullable(mainOrder.getResult())
-                                                    .orElse(BigDecimal.ZERO)
-                                                    .add(order.getResult())
-                                    )
-                    );
-            this.setLockedSum(order, BigDecimal.ZERO);
+            fixResult(order);
             order.setStatus(OrderStatusType.CLOSED);
             addHistory(order, data.getData().getCandle().getClose(), data.getHistory().getUno());
             this.save(order);
@@ -430,15 +461,32 @@ public class OrderServiceImpl implements OrderService {
         return order;
     }
 
+    private void fixResult(OrderEntity order) {
+        order.setResult(
+                order.getDeals()
+                        .stream()
+                        .map(DealEntity::getResult)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add)
+                        .add(
+                                Optional.ofNullable(order.getResult())
+                                        .orElse(BigDecimal.ZERO)
+                        )
+        );
+        if (isMain(order)) {
+            this.setLockedSum(order, BigDecimal.ZERO);
+            accounting(order, order.getResult());
+        }
+    }
+
     @Override
     public void processAll(DataChart data) {
-        findAllByStatusNot(OrderStatusType.CLOSED).stream()
+        findAllBySecAndStatusNot(data.getHistory().getSec(), OrderStatusType.CLOSED).stream()
                 .sorted(Comparator.comparing(OrderEntity::getUno))
                 .forEach(it -> process(it, data));
     }
 
     private void addHistory(OrderEntity order, BigDecimal price, String uno) {
-        if (Objects.isNull(order) || Objects.nonNull(order.getMain())) {
+        if (Objects.isNull(order)) {
             return;
         }
         OrderHistoryEntity orderHistoryEntity = new OrderHistoryEntity();
@@ -454,15 +502,19 @@ public class OrderServiceImpl implements OrderService {
         if (order.getStatus() == OrderStatusType.PREPARE || order.getStatus() == OrderStatusType.OPEN) {
             return order.getType();
         } else {
-            return order.getType() == EventType.BUY ? EventType.SELL : EventType.BUY;
+            return isBuy(order) ? EventType.SELL : EventType.BUY;
         }
     }
 
+    private Boolean isBuy(OrderEntity order) {
+        return Optional
+                .ofNullable(order.getMain())
+                .map(it -> it.getType() == EventType.SELL)
+                .orElse(order.getType() == EventType.BUY);
+    }
+
     private String getHashCode(OrderEntity entity) {
-        return entity.getUno() +
-                Optional.ofNullable(entity.getMain())
-                        .map(it -> it.getUno() + Optional.ofNullable(it.getEvent()).map(EventEntity::getCode))
-                        .orElse(Optional.ofNullable(entity.getEvent()).map(EventEntity::getCode).orElse(""));
+        return entity.getUno() + entity.getTransId();
     }
 
     private Boolean setMaxPrice(OrderEntity order, BigDecimal price) {

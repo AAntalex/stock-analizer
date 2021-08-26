@@ -52,21 +52,28 @@ public class ChartFormer {
         return curTime.compareTo(START_TIME) >= 0 && curTime.compareTo(END_TIME) <= 0;
     }
 
-    private DataChart getDataChart(History history) {
-        Date date = history.getDate();
-        return dataChartService.getCache().getData().get(date);
+    private DataChart getDataChart(Date date) {
+        return dataChartService.getCache().getDataList()
+                .stream()
+                .filter(it -> date.equals(it.getDate()))
+                .findFirst()
+                .orElse(null);
     }
 
     private DataChart getDataChart(AllHistoryRpt history) {
-        Map<Date, DataChart> data = dataChartService.getCache().getData();
-        Date date = history.getDate();
-        DataChart dataChart = data.get(date);
-        if (dataChart == null) {
+        dataChartService.setCurCache(history.getSec());
+        DataChart dataChart = dataChartService.getCache().getCurData();
+        if (Optional
+                .ofNullable(dataChart)
+                .map(DataChart::getDate)
+                .map(it -> it.compareTo(history.getDate()) < 0)
+                .orElse(true))
+        {
             dataChart = new DataChart();
-            dataChart.setDate(date);
-            data.put(date, dataChart);
+            dataChart.setDate(history.getDate());
             dataChart.setCalcIndicator(false);
             dataChart.setIdx(dataChartService.getCache().getDataList().size());
+            dataChartService.getCache().setCurData(dataChart);
         }
         dataChart.setHistory(history);
         return dataChart;
@@ -118,7 +125,7 @@ public class ChartFormer {
                 .map(it -> it.compareTo(dataChart.getDate()) != 0)
                 .orElse(true))
         {
-            if (dataChartService.getCache().getLastData() != null) {
+            if (Objects.nonNull(dataChartService.getCache().getLastData())) {
 /*
 
                 addPointToTrend(30);
@@ -139,7 +146,8 @@ public class ChartFormer {
     }
 
     public void addDealHistory(OrderHistoryRpt history) {
-        DataChart dataChart = getDataChart(history);
+        dataChartService.setCurCache(history.getSec());
+        DataChart dataChart = getDataChart(history.getDate());
         if (
                 (
                         history.getStatus() == OrderStatusType.OPEN ||
@@ -155,15 +163,18 @@ public class ChartFormer {
     }
 
     public synchronized void add(AllHistoryRpt history) {
+        dataChartService.setCurCache(history.getSec());
         String uno = history.getUno();
-        Map<String, AllHistoryRpt> allHistory = dataChartService.getCache().getAllHistory();
-        if (checkTime(uno) && !allHistory.containsKey(uno)) {
-            allHistory.put(uno, history);
-/*
+        if (checkTime(uno) && Optional
+                .ofNullable(dataChartService.getCache().getCurData())
+                .map(DataChart::getHistory)
+                .map(AllHistoryRpt::getUno)
+                .map(it -> it.compareTo(uno) < 0)
+                .orElse(true))
+        {
             if (history.getQuotes() != null) {
                 addQuotes(history);
             }
-*/
             if (history.getTradeNum() != null) {
                 addPoint(addOrder(history));
             }
@@ -400,20 +411,33 @@ public class ChartFormer {
         testService.init();
     }
 
+    public void cutData(int newRange) {
+        dataChartService.getCache().cutData(newRange);
+    }
     private List<DataChartDto> getDataList(Date dateBegin, Date dateEnd) {
         return dtoMapper.map(
-                dataChartService.getCache().getData().values()
+                dataChartService.getCache().getDataList()
                         .stream()
-                        .filter(it -> Objects.nonNull(it.getData()) && (dateBegin == null || it.getDate().compareTo(dateBegin) >= 0)
-                                && (dateEnd == null || it.getDate().compareTo(dateEnd) <= 0))
-                        .sorted(Comparator.comparing(DataChart::getDate)), DataChartDto.class);
+                        .filter(it -> Objects.nonNull(it.getData()) &&
+                                        Optional
+                                                .ofNullable(dateBegin)
+                                                .map(d -> it.getDate().compareTo(d) >= 0)
+                                                .orElse(true) &&
+                                        Optional
+                                                .ofNullable(dateEnd)
+                                                .map(d -> it.getDate().compareTo(d) <= 0)
+                                                .orElse(true)
+
+                        )
+                        .sorted(Comparator.comparing(DataChart::getDate))
+                , DataChartDto.class);
     }
 
     public List<DataChartDto> getDataList(String sDateBegin, String sDateEnd) {
         DataHolder.setFirstData(dataChartService.getCache().getFirstData());
 
 
-        setTrend(0, 5);
+//        setTrend(0, 5);
         setTrend(60, 5);
         setTrend(120, 5);
         setTrend(240, 5);

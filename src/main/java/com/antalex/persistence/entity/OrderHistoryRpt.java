@@ -26,4 +26,7 @@ public class OrderHistoryRpt implements History {
     private BigDecimal price;
     @Column(name = "STATUS")
     private OrderStatusType status;
+    @OneToOne
+    @JoinColumn(name = "SEC_REF")
+    private ClassSecEntity sec;
 }

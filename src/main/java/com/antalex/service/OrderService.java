@@ -1,6 +1,5 @@
 package com.antalex.service;
 
-import com.antalex.holders.BatchDataHolder;
 import com.antalex.model.DataChart;
 import com.antalex.model.enums.OrderStatusType;
 import com.antalex.model.enums.EventType;
@@ -19,14 +18,14 @@ public interface OrderService {
                          String caption,
                          OrderEntity main);
     OrderEntity save(OrderEntity entity, Boolean force);
-    void startBatch(Integer batchSize);
-    void stopBatch();
+    void startCache(Integer batchSize);
+    void stopCache();
     OrderEntity procLimit(OrderEntity order, DataChart data);
     void process(OrderEntity order, DataChart data);
     void processAll(DataChart data);
-    List<OrderEntity> findAllByStatus(OrderStatusType status);
-    List<OrderEntity> findAllByStatusNot(OrderStatusType status);
-    List<OrderEntity> findAllByEventAndStatus(EventEntity event, OrderStatusType status);
+    List<OrderEntity> findAllBySecAndStatus(ClassSecEntity sec, OrderStatusType status);
+    List<OrderEntity> findAllBySecAndStatusNot(ClassSecEntity sec, OrderStatusType status);
+    List<OrderEntity> findAllBySecAndEventAndStatus(ClassSecEntity sec, EventEntity event, OrderStatusType status);
     List<OrderHistoryRpt> getHistory(String code, String classCode, String sDateBegin, String sDateEnd);
     Double getBalance(OrderEntity order);
     BigDecimal getTotalSum(OrderEntity order);

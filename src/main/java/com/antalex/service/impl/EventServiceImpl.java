@@ -89,7 +89,7 @@ public class EventServiceImpl implements EventService {
                                 )
                     );
         }
-        orderService.findAllByEventAndStatus(event, OrderStatusType.OPEN)
+        orderService.findAllBySecAndEventAndStatus(data.getHistory().getSec(), event, OrderStatusType.OPEN)
                 .forEach(it -> orderService.procLimit(it, data));
     }
 

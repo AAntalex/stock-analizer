@@ -3,6 +3,7 @@ package com.antalex.service;
 import com.antalex.model.CacheDadaChart;
 import com.antalex.model.DataChart;
 import com.antalex.model.Trend;
+import com.antalex.persistence.entity.ClassSecEntity;
 import com.antalex.persistence.entity.EventEntity;
 import com.antalex.persistence.entity.IndicatorValueEntity;
 import com.antalex.persistence.entity.TraceValueEntity;
@@ -12,6 +13,7 @@ import java.util.List;
 
 public interface DataChartService {
     CacheDadaChart getCache();
+    void setCurCache(ClassSecEntity sec);
     void dropCache();
     BigDecimal getValue(DataChart data, String variable);
     Boolean getBool(DataChart data, String boolExpression);

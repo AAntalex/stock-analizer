@@ -5,10 +5,7 @@ import com.antalex.holders.DateFormatHolder;
 import com.antalex.model.*;
 import com.antalex.model.enums.StatusType;
 import com.antalex.model.enums.VariableType;
-import com.antalex.persistence.entity.AllHistoryRpt;
-import com.antalex.persistence.entity.EventEntity;
-import com.antalex.persistence.entity.IndicatorValueEntity;
-import com.antalex.persistence.entity.TraceValueEntity;
+import com.antalex.persistence.entity.*;
 import com.antalex.service.DataChartService;
 import com.antalex.service.TrendService;
 import com.google.common.base.Enums;
@@ -29,6 +26,7 @@ public class DataChartServiceImpl implements DataChartService {
     private static final String BETTA = "BETTA";
     private static final String WEIGHT = "WEIGHT";
     private static final String PREV = "_PREV";
+    private static final Map<ClassSecEntity, CacheDadaChart> allCache = new HashMap<>();
     private CacheDadaChart cache;
     private Boolean trace = false;
 
@@ -41,9 +39,18 @@ public class DataChartServiceImpl implements DataChartService {
     @Override
     public CacheDadaChart getCache() {
         if (this.cache == null) {
-            this.cache = new CacheDadaChart();
+            throw new IllegalStateException("Not init cache!!!");
         }
         return this.cache;
+    }
+
+    @Override
+    public void setCurCache(ClassSecEntity sec) {
+        this.cache = allCache.get(sec);
+        if (this.cache == null) {
+            this.cache = new CacheDadaChart();
+            allCache.put(sec, this.cache);
+        }
     }
 
     @Override

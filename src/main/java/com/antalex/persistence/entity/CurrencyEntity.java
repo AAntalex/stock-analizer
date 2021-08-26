@@ -10,7 +10,7 @@ import javax.persistence.Table;
 @Table(name = "Z#FT_MONEY")
 @Data
 @Entity
-public class FtMoneyEntity {
+public class CurrencyEntity {
     @Id
     @Column(name = "ID")
     private Long id;

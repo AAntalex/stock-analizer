@@ -61,7 +61,7 @@ public class OrderEntity {
     @OneToOne
     @JoinColumn(name = "C_EVENT")
     private EventEntity event;
-    @OneToOne
+    @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "C_MAIN")
     private OrderEntity main;
     @OneToOne(cascade = CascadeType.ALL)
@@ -85,7 +85,7 @@ public class OrderEntity {
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "C_ORDER_REF")
     private List<DealEntity> deals = new ArrayList<>();
-    @OneToOne
+    @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "C_ACCOUNT")
     private AccountEntity account;
     @Transient
