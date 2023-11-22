@@ -55,7 +55,7 @@ public class TestController {
 
                             chartService.getData(
                                     "",
-                                    DateFormatHolder.getStringFromDate(DateFormatHolder.getDateFromString(monthInterval.getKey())),
+                                    monthInterval.getKey(),
                                     monthInterval.getValue(),
                                     stockClass,
                                     interval

@@ -8,6 +8,7 @@ import org.springframework.context.annotation.ComponentScan;;import java.math.Bi
 @ComponentScan("com.antalex")
 public class StockAnalyzerApplication {
     public static void main(String[] args) {
+
         SpringApplication.run(StockAnalyzerApplication.class, args);
 
 /*

@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Component
@@ -27,6 +28,7 @@ public class DataChartServiceImpl implements DataChartService {
     private static final String WEIGHT = "WEIGHT";
     private static final String PREV = "_PREV";
     private static final Map<ClassSecEntity, CacheDadaChart> allCache = new HashMap<>();
+    private static final List<ClassSecEntity> classesList = new ArrayList<>();
     private CacheDadaChart cache;
     private Boolean trace = false;
 
@@ -45,11 +47,35 @@ public class DataChartServiceImpl implements DataChartService {
     }
 
     @Override
+    public Map<ClassSecEntity, CacheDadaChart> getAllCache() {
+        return allCache;
+    }
+
+    @Override
+    public CacheDadaChart getCache(ClassSecEntity sec) {
+        CacheDadaChart cache = allCache.get(sec);
+        if (Objects.isNull(cache)) {
+            cache = new CacheDadaChart();
+            allCache.put(sec, cache);
+            classesList.add(sec);
+        }
+        return cache;
+    }
+
+    @Override
+    public Stream<Map.Entry<ClassSecEntity, CacheDadaChart>> getAdditionalCache() {
+        return allCache
+                .entrySet()
+                .stream()
+                .filter(it -> !it.getKey().equals(classesList.get(0)));
+    }
+
+    @Override
     public void setCurCache(ClassSecEntity sec) {
-        this.cache = allCache.get(sec);
-        if (this.cache == null) {
-            this.cache = new CacheDadaChart();
-            allCache.put(sec, this.cache);
+        if (Objects.isNull(sec)) {
+            this.cache = getCache(classesList.get(0));
+        } else {
+            this.cache = getCache(sec);
         }
     }
 
@@ -81,6 +107,7 @@ public class DataChartServiceImpl implements DataChartService {
     @Override
     public void dropCache() {
         this.cache = new CacheDadaChart();
+        allCache.clear();
     }
 
     @Override

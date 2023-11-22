@@ -60,6 +60,7 @@ public class ChartFormer {
                 .orElse(null);
     }
 
+
     private DataChart getDataChart(AllHistoryRpt history) {
         dataChartService.setCurCache(history.getSec());
         DataChart dataChart = dataChartService.getCache().getCurData();
@@ -412,7 +413,10 @@ public class ChartFormer {
     }
 
     public void cutData(int newRange) {
-        dataChartService.getCache().cutData(newRange);
+        dataChartService
+                .getAllCache()
+                .values()
+                .forEach(it -> it.cutData(newRange));
     }
     private List<DataChartDto> getDataList(Date dateBegin, Date dateEnd) {
         return dtoMapper.map(
@@ -434,6 +438,7 @@ public class ChartFormer {
     }
 
     public List<DataChartDto> getDataList(String sDateBegin, String sDateEnd) {
+        dataChartService.setCurCache(null);
         DataHolder.setFirstData(dataChartService.getCache().getFirstData());
 
 
